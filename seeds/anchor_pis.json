@@ -1,0 +1,162 @@
+[
+  {
+    "name": "Cesar Laurent Yoshua Bengio",
+    "openalex_id": "A5061525983",
+    "institution": null,
+    "h_index": 1,
+    "works_count": 1,
+    "cited_by_count": 72
+  },
+  {
+    "name": "Geoffrey E. Hinton",
+    "openalex_id": "A5108093963",
+    "institution": null,
+    "h_index": 137,
+    "works_count": 384,
+    "cited_by_count": 445532
+  },
+  {
+    "name": "Yann Lecun",
+    "openalex_id": "A5113433465",
+    "institution": null,
+    "h_index": 2,
+    "works_count": 43,
+    "cited_by_count": 1929
+  },
+  {
+    "name": "Ilya Sutskever",
+    "openalex_id": "A5006446297",
+    "institution": null,
+    "h_index": 64,
+    "works_count": 106,
+    "cited_by_count": 221347
+  },
+  {
+    "name": "Andrej Karpathy",
+    "openalex_id": "A5009290031",
+    "institution": null,
+    "h_index": 20,
+    "works_count": 25,
+    "cited_by_count": 58549
+  },
+  {
+    "name": "Pieter Abbeel",
+    "openalex_id": "A5049349154",
+    "institution": "Berkeley College",
+    "h_index": 124,
+    "works_count": 708,
+    "cited_by_count": 76877
+  },
+  {
+    "name": "Sergey Levine",
+    "openalex_id": "A5026322200",
+    "institution": null,
+    "h_index": 110,
+    "works_count": 872,
+    "cited_by_count": 63341
+  },
+  {
+    "name": "Percy Liang",
+    "openalex_id": "A5127861175",
+    "institution": null,
+    "h_index": 2,
+    "works_count": 11,
+    "cited_by_count": 23
+  },
+  {
+    "name": "Christopher J. Manning",
+    "openalex_id": "A5112183931",
+    "institution": null,
+    "h_index": 13,
+    "works_count": 40,
+    "cited_by_count": 731
+  },
+  {
+    "name": "Daphne Koller",
+    "openalex_id": "A5051658526",
+    "institution": null,
+    "h_index": 118,
+    "works_count": 343,
+    "cited_by_count": 57185
+  },
+  {
+    "name": "M. Jordan Raddick",
+    "openalex_id": "A5033007894",
+    "institution": null,
+    "h_index": 35,
+    "works_count": 85,
+    "cited_by_count": 26420
+  },
+  {
+    "name": "Sanjeev Arora",
+    "openalex_id": "A5103209777",
+    "institution": "Princeton University",
+    "h_index": 80,
+    "works_count": 460,
+    "cited_by_count": 26401
+  },
+  {
+    "name": "Jure Leskovec",
+    "openalex_id": "A5091272738",
+    "institution": null,
+    "h_index": 136,
+    "works_count": 624,
+    "cited_by_count": 108695
+  },
+  {
+    "name": "Stefanie Jegelka",
+    "openalex_id": "A5116248738",
+    "institution": null,
+    "h_index": 1,
+    "works_count": 1,
+    "cited_by_count": 3
+  },
+  {
+    "name": "Tommi Jaakkola",
+    "openalex_id": "A5048915657",
+    "institution": "IIT@MIT",
+    "h_index": 92,
+    "works_count": 461,
+    "cited_by_count": 44286
+  },
+  {
+    "name": "Suvrit Sra",
+    "openalex_id": "A5058767558",
+    "institution": null,
+    "h_index": 44,
+    "works_count": 297,
+    "cited_by_count": 10120
+  },
+  {
+    "name": "Chelsea Finn",
+    "openalex_id": "A5005431772",
+    "institution": null,
+    "h_index": 64,
+    "works_count": 407,
+    "cited_by_count": 26056
+  },
+  {
+    "name": "Sara Beery",
+    "openalex_id": "A5121208774",
+    "institution": null,
+    "h_index": 0,
+    "works_count": 4,
+    "cited_by_count": 0
+  },
+  {
+    "name": "Aleksander Mądry",
+    "openalex_id": "A5032574693",
+    "institution": "Moscow Institute of Thermal Technology",
+    "h_index": 43,
+    "works_count": 152,
+    "cited_by_count": 8688
+  },
+  {
+    "name": "Been Kim",
+    "openalex_id": "A5041405652",
+    "institution": "Google (United States)",
+    "h_index": 38,
+    "works_count": 93,
+    "cited_by_count": 11513
+  }
+]

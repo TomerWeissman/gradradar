@@ -1,0 +1,842 @@
+[
+  {
+    "name": "Massachusetts Institute of Technology",
+    "openalex_id": "I63966007",
+    "country": "US",
+    "region": "US",
+    "city": "Cambridge",
+    "type": "university"
+  },
+  {
+    "name": "Stanford University",
+    "openalex_id": "I97018004",
+    "country": "US",
+    "region": "US",
+    "city": "Stanford",
+    "type": "university"
+  },
+  {
+    "name": "Carnegie Mellon University",
+    "openalex_id": "I74973139",
+    "country": "US",
+    "region": "US",
+    "city": "Pittsburgh",
+    "type": "university"
+  },
+  {
+    "name": "California Institute of Technology",
+    "openalex_id": "I122411786",
+    "country": "US",
+    "region": "US",
+    "city": "Pasadena",
+    "type": "university"
+  },
+  {
+    "name": "Princeton University",
+    "openalex_id": "I20089843",
+    "country": "US",
+    "region": "US",
+    "city": "Princeton",
+    "type": "university"
+  },
+  {
+    "name": "Harvard University",
+    "openalex_id": "I136199984",
+    "country": "US",
+    "region": "US",
+    "city": "Cambridge",
+    "type": "university"
+  },
+  {
+    "name": "University of Washington",
+    "openalex_id": "I201448701",
+    "country": "US",
+    "region": "US",
+    "city": "Seattle",
+    "type": "university"
+  },
+  {
+    "name": "Cornell University",
+    "openalex_id": "I205783295",
+    "country": "US",
+    "region": "US",
+    "city": "Ithaca",
+    "type": "university"
+  },
+  {
+    "name": "University of Illinois Urbana-Champaign",
+    "openalex_id": "I157725225",
+    "country": "US",
+    "region": "US",
+    "city": "Urbana",
+    "type": "university"
+  },
+  {
+    "name": "Georgia Institute of Technology",
+    "openalex_id": "I130701444",
+    "country": "US",
+    "region": "US",
+    "city": "Atlanta",
+    "type": "university"
+  },
+  {
+    "name": "University of Michigan",
+    "openalex_id": "I27837315",
+    "country": "US",
+    "region": "US",
+    "city": "Ann Arbor",
+    "type": "university"
+  },
+  {
+    "name": "The University of Texas at Austin",
+    "openalex_id": "I86519309",
+    "country": "US",
+    "region": "US",
+    "city": "Austin",
+    "type": "university"
+  },
+  {
+    "name": "Columbia University",
+    "openalex_id": "I78577930",
+    "country": "US",
+    "region": "US",
+    "city": "New York",
+    "type": "university"
+  },
+  {
+    "name": "University of Wisconsin–Madison",
+    "openalex_id": "I135310074",
+    "country": "US",
+    "region": "US",
+    "city": "Madison",
+    "type": "university"
+  },
+  {
+    "name": "University of Pennsylvania",
+    "openalex_id": "I79576946",
+    "country": "US",
+    "region": "US",
+    "city": "Philadelphia",
+    "type": "university"
+  },
+  {
+    "name": "New York University",
+    "openalex_id": "I57206974",
+    "country": "US",
+    "region": "US",
+    "city": "New York",
+    "type": "university"
+  },
+  {
+    "name": "Duke University",
+    "openalex_id": "I170897317",
+    "country": "US",
+    "region": "US",
+    "city": "Durham",
+    "type": "university"
+  },
+  {
+    "name": "University of Chicago",
+    "openalex_id": "I40347166",
+    "country": "US",
+    "region": "US",
+    "city": "Chicago",
+    "type": "university"
+  },
+  {
+    "name": "Yale University",
+    "openalex_id": "I32971472",
+    "country": "US",
+    "region": "US",
+    "city": "New Haven",
+    "type": "university"
+  },
+  {
+    "name": "University of Massachusetts Amherst",
+    "openalex_id": "I24603500",
+    "country": "US",
+    "region": "US",
+    "city": "Amherst Center",
+    "type": "university"
+  },
+  {
+    "name": "Johns Hopkins University",
+    "openalex_id": "I145311948",
+    "country": "US",
+    "region": "US",
+    "city": "Baltimore",
+    "type": "university"
+  },
+  {
+    "name": "Northwestern University",
+    "openalex_id": "I111979921",
+    "country": "US",
+    "region": "US",
+    "city": "Evanston",
+    "type": "university"
+  },
+  {
+    "name": "Rice University",
+    "openalex_id": "I74775410",
+    "country": "US",
+    "region": "US",
+    "city": "Houston",
+    "type": "university"
+  },
+  {
+    "name": "University of Southern California",
+    "openalex_id": "I1174212",
+    "country": "US",
+    "region": "US",
+    "city": "Los Angeles",
+    "type": "university"
+  },
+  {
+    "name": "The Ohio State University",
+    "openalex_id": "I52357470",
+    "country": "US",
+    "region": "US",
+    "city": "Columbus",
+    "type": "university"
+  },
+  {
+    "name": "University of Minnesota",
+    "openalex_id": "I130238516",
+    "country": "US",
+    "region": "US",
+    "city": "Minneapolis",
+    "type": "university"
+  },
+  {
+    "name": "Purdue University West Lafayette",
+    "openalex_id": "I219193219",
+    "country": "US",
+    "region": "US",
+    "city": "West Lafayette",
+    "type": "university"
+  },
+  {
+    "name": "Brown University",
+    "openalex_id": "I27804330",
+    "country": "US",
+    "region": "US",
+    "city": "Providence",
+    "type": "university"
+  },
+  {
+    "name": "University of Virginia",
+    "openalex_id": "I51556381",
+    "country": "US",
+    "region": "US",
+    "city": "Charlottesville",
+    "type": "university"
+  },
+  {
+    "name": "Boston University",
+    "openalex_id": "I111088046",
+    "country": "US",
+    "region": "US",
+    "city": "Boston",
+    "type": "university"
+  },
+  {
+    "name": "Northeastern University",
+    "openalex_id": "I12912129",
+    "country": "US",
+    "region": "US",
+    "city": "Boston",
+    "type": "university"
+  },
+  {
+    "name": "University of Colorado Boulder",
+    "openalex_id": "I188538660",
+    "country": "US",
+    "region": "US",
+    "city": "Boulder",
+    "type": "university"
+  },
+  {
+    "name": "Pennsylvania State University",
+    "openalex_id": "I130769515",
+    "country": "US",
+    "region": "US",
+    "city": "State College",
+    "type": "university"
+  },
+  {
+    "name": "Rutgers, The State University of New Jersey",
+    "openalex_id": "I102322142",
+    "country": "US",
+    "region": "US",
+    "city": "New Brunswick",
+    "type": "university"
+  },
+  {
+    "name": "University of North Carolina at Chapel Hill",
+    "openalex_id": "I114027177",
+    "country": "US",
+    "region": "US",
+    "city": "Chapel Hill",
+    "type": "university"
+  },
+  {
+    "name": "Stony Brook University",
+    "openalex_id": "I59553526",
+    "country": "US",
+    "region": "US",
+    "city": "Stony Brook",
+    "type": "university"
+  },
+  {
+    "name": "University of Utah",
+    "openalex_id": "I223532165",
+    "country": "US",
+    "region": "US",
+    "city": "Salt Lake City",
+    "type": "university"
+  },
+  {
+    "name": "Arizona State University",
+    "openalex_id": "I55732556",
+    "country": "US",
+    "region": "US",
+    "city": "Tempe",
+    "type": "university"
+  },
+  {
+    "name": "University of Florida",
+    "openalex_id": "I33213144",
+    "country": "US",
+    "region": "US",
+    "city": "Gainesville",
+    "type": "university"
+  },
+  {
+    "name": "Virginia Tech",
+    "openalex_id": "I859038795",
+    "country": "US",
+    "region": "US",
+    "city": "Blacksburg",
+    "type": "university"
+  },
+  {
+    "name": "Washington University in St. Louis",
+    "openalex_id": "I204465549",
+    "country": "US",
+    "region": "US",
+    "city": "St Louis",
+    "type": "university"
+  },
+  {
+    "name": "Emory University",
+    "openalex_id": "I150468666",
+    "country": "US",
+    "region": "US",
+    "city": "Atlanta",
+    "type": "university"
+  },
+  {
+    "name": "Texas A&M University",
+    "openalex_id": "I91045830",
+    "country": "US",
+    "region": "US",
+    "city": "College Station",
+    "type": "university"
+  },
+  {
+    "name": "University of Oxford",
+    "openalex_id": "I40120149",
+    "country": "GB",
+    "region": "UK",
+    "city": "Oxford",
+    "type": "university"
+  },
+  {
+    "name": "University of Cambridge",
+    "openalex_id": "I241749",
+    "country": "GB",
+    "region": "UK",
+    "city": "Cambridge",
+    "type": "university"
+  },
+  {
+    "name": "Imperial College London",
+    "openalex_id": "I47508984",
+    "country": "GB",
+    "region": "UK",
+    "city": "London",
+    "type": "university"
+  },
+  {
+    "name": "University College London",
+    "openalex_id": "I45129253",
+    "country": "GB",
+    "region": "UK",
+    "city": "London",
+    "type": "university"
+  },
+  {
+    "name": "University of Edinburgh",
+    "openalex_id": "I98677209",
+    "country": "GB",
+    "region": "UK",
+    "city": "Edinburgh",
+    "type": "university"
+  },
+  {
+    "name": "University of Manchester",
+    "openalex_id": "I28407311",
+    "country": "GB",
+    "region": "UK",
+    "city": "Manchester",
+    "type": "university"
+  },
+  {
+    "name": "King's College London",
+    "openalex_id": "I183935753",
+    "country": "GB",
+    "region": "UK",
+    "city": "London",
+    "type": "university"
+  },
+  {
+    "name": "University of Bristol",
+    "openalex_id": "I36234482",
+    "country": "GB",
+    "region": "UK",
+    "city": "Bristol",
+    "type": "university"
+  },
+  {
+    "name": "University of Warwick",
+    "openalex_id": "I39555362",
+    "country": "GB",
+    "region": "UK",
+    "city": "Coventry",
+    "type": "university"
+  },
+  {
+    "name": "University of Glasgow",
+    "openalex_id": "I7882870",
+    "country": "GB",
+    "region": "UK",
+    "city": "Glasgow",
+    "type": "university"
+  },
+  {
+    "name": "University of Birmingham",
+    "openalex_id": "I79619799",
+    "country": "GB",
+    "region": "UK",
+    "city": "Birmingham",
+    "type": "university"
+  },
+  {
+    "name": "University of Leeds",
+    "openalex_id": "I130828816",
+    "country": "GB",
+    "region": "UK",
+    "city": "Leeds",
+    "type": "university"
+  },
+  {
+    "name": "University of Southampton",
+    "openalex_id": "I43439940",
+    "country": "GB",
+    "region": "UK",
+    "city": "Southampton",
+    "type": "university"
+  },
+  {
+    "name": "University of Sheffield",
+    "openalex_id": "I91136226",
+    "country": "GB",
+    "region": "UK",
+    "city": "Sheffield",
+    "type": "university"
+  },
+  {
+    "name": "University of Nottingham",
+    "openalex_id": "I142263535",
+    "country": "GB",
+    "region": "UK",
+    "city": "Nottingham",
+    "type": "university"
+  },
+  {
+    "name": "University of Bath",
+    "openalex_id": "I51601045",
+    "country": "GB",
+    "region": "UK",
+    "city": "Bath",
+    "type": "university"
+  },
+  {
+    "name": "University of St Andrews",
+    "openalex_id": "I16835326",
+    "country": "GB",
+    "region": "UK",
+    "city": "St Andrews",
+    "type": "university"
+  },
+  {
+    "name": "University of York",
+    "openalex_id": "I52099693",
+    "country": "GB",
+    "region": "UK",
+    "city": "York",
+    "type": "university"
+  },
+  {
+    "name": "University of Exeter",
+    "openalex_id": "I23923803",
+    "country": "GB",
+    "region": "UK",
+    "city": "Exeter",
+    "type": "university"
+  },
+  {
+    "name": "University of Surrey",
+    "openalex_id": "I28290843",
+    "country": "GB",
+    "region": "UK",
+    "city": "Guildford",
+    "type": "university"
+  },
+  {
+    "name": "ETH Zurich",
+    "openalex_id": "I35440088",
+    "country": "CH",
+    "region": "Europe",
+    "city": "Zurich",
+    "type": "university"
+  },
+  {
+    "name": "École Polytechnique Fédérale de Lausanne",
+    "openalex_id": "I5124864",
+    "country": "CH",
+    "region": "Europe",
+    "city": "Lausanne",
+    "type": "university"
+  },
+  {
+    "name": "Technical University of Munich",
+    "openalex_id": "I62916508",
+    "country": "DE",
+    "region": "Europe",
+    "city": "Munich",
+    "type": "university"
+  },
+  {
+    "name": "Max Planck Society",
+    "openalex_id": "I149899117",
+    "country": "DE",
+    "region": "Europe",
+    "city": "Munich",
+    "type": "research_institute"
+  },
+  {
+    "name": "RWTH Aachen University",
+    "openalex_id": "I887968799",
+    "country": "DE",
+    "region": "Europe",
+    "city": "Aachen",
+    "type": "university"
+  },
+  {
+    "name": "Heidelberg University",
+    "openalex_id": "I223822909",
+    "country": "DE",
+    "region": "Europe",
+    "city": "Heidelberg",
+    "type": "university"
+  },
+  {
+    "name": "University of Bonn",
+    "openalex_id": "I135140700",
+    "country": "DE",
+    "region": "Europe",
+    "city": "Bonn",
+    "type": "university"
+  },
+  {
+    "name": "Institut national de recherche en sciences et technologies du numérique",
+    "openalex_id": "I1326498283",
+    "country": "FR",
+    "region": "Europe",
+    "city": "Paris",
+    "type": "research_institute"
+  },
+  {
+    "name": "Sorbonne Université",
+    "openalex_id": "I39804081",
+    "country": "FR",
+    "region": "Europe",
+    "city": "Paris",
+    "type": "university"
+  },
+  {
+    "name": "École Normale Supérieure - PSL",
+    "openalex_id": "I29607241",
+    "country": "FR",
+    "region": "Europe",
+    "city": "Paris",
+    "type": "university"
+  },
+  {
+    "name": "École Polytechnique",
+    "openalex_id": "I142476485",
+    "country": "FR",
+    "region": "Europe",
+    "city": "Palaiseau",
+    "type": "university"
+  },
+  {
+    "name": "Université Paris-Saclay",
+    "openalex_id": "I277688954",
+    "country": "FR",
+    "region": "Europe",
+    "city": "Gif-sur-Yvette",
+    "type": "university"
+  },
+  {
+    "name": "KU Leuven",
+    "openalex_id": "I99464096",
+    "country": "BE",
+    "region": "Europe",
+    "city": "Leuven",
+    "type": "university"
+  },
+  {
+    "name": "Delft University of Technology",
+    "openalex_id": "I98358874",
+    "country": "NL",
+    "region": "Europe",
+    "city": "Delft",
+    "type": "university"
+  },
+  {
+    "name": "University of Amsterdam",
+    "openalex_id": "I887064364",
+    "country": "NL",
+    "region": "Europe",
+    "city": "Amsterdam",
+    "type": "university"
+  },
+  {
+    "name": "Eindhoven University of Technology",
+    "openalex_id": "I83019370",
+    "country": "NL",
+    "region": "Europe",
+    "city": "Eindhoven",
+    "type": "university"
+  },
+  {
+    "name": "KTH Royal Institute of Technology",
+    "openalex_id": "I86987016",
+    "country": "SE",
+    "region": "Europe",
+    "city": "Stockholm",
+    "type": "university"
+  },
+  {
+    "name": "Uppsala University",
+    "openalex_id": "I123387679",
+    "country": "SE",
+    "region": "Europe",
+    "city": "Uppsala",
+    "type": "university"
+  },
+  {
+    "name": "University of Copenhagen",
+    "openalex_id": "I124055696",
+    "country": "DK",
+    "region": "Europe",
+    "city": "Copenhagen",
+    "type": "university"
+  },
+  {
+    "name": "Aalto University",
+    "openalex_id": "I9927081",
+    "country": "FI",
+    "region": "Europe",
+    "city": "Espoo",
+    "type": "university"
+  },
+  {
+    "name": "University of Helsinki",
+    "openalex_id": "I133731052",
+    "country": "FI",
+    "region": "Europe",
+    "city": "Helsinki",
+    "type": "university"
+  },
+  {
+    "name": "Sapienza University of Rome",
+    "openalex_id": "I861853513",
+    "country": "IT",
+    "region": "Europe",
+    "city": "Rome",
+    "type": "university"
+  },
+  {
+    "name": "Politecnico di Milano",
+    "openalex_id": "I93860229",
+    "country": "IT",
+    "region": "Europe",
+    "city": "Milan",
+    "type": "university"
+  },
+  {
+    "name": "Technical University of Denmark",
+    "openalex_id": "I96673099",
+    "country": "DK",
+    "region": "Europe",
+    "city": "Kongens Lyngby",
+    "type": "university"
+  },
+  {
+    "name": "University of Vienna",
+    "openalex_id": "I129774422",
+    "country": "AT",
+    "region": "Europe",
+    "city": "Vienna",
+    "type": "university"
+  },
+  {
+    "name": "Charles University",
+    "openalex_id": "I21250087",
+    "country": "CZ",
+    "region": "Europe",
+    "city": "Prague",
+    "type": "university"
+  },
+  {
+    "name": "University of Warsaw",
+    "openalex_id": "I4654613",
+    "country": "PL",
+    "region": "Europe",
+    "city": "Warsaw",
+    "type": "university"
+  },
+  {
+    "name": "Universitat Politècnica de Catalunya",
+    "openalex_id": "I9617848",
+    "country": "ES",
+    "region": "Europe",
+    "city": "Barcelona",
+    "type": "university"
+  },
+  {
+    "name": "Google DeepMind (United Kingdom)",
+    "openalex_id": "I4210090411",
+    "country": "GB",
+    "region": "UK",
+    "city": "London",
+    "type": "industry_lab"
+  },
+  {
+    "name": "Microsoft",
+    "openalex_id": "I1290206253",
+    "country": "US",
+    "region": "US",
+    "city": null,
+    "type": "industry_lab"
+  },
+  {
+    "name": "OpenAI (United States)",
+    "openalex_id": "I4210161460",
+    "country": "US",
+    "region": "US",
+    "city": "San Francisco",
+    "type": "industry_lab"
+  },
+  {
+    "name": "Allen Institute for Artificial Intelligence",
+    "openalex_id": "I4210156221",
+    "country": "US",
+    "region": "US",
+    "city": "Seattle",
+    "type": "research_institute"
+  },
+  {
+    "name": "University of California, Berkeley",
+    "openalex_id": "I95457486",
+    "country": "US",
+    "region": "US",
+    "city": "Berkeley",
+    "type": "university"
+  },
+  {
+    "name": "University of California, Los Angeles",
+    "openalex_id": "I161318765",
+    "country": "US",
+    "region": "US",
+    "city": "Los Angeles",
+    "type": "university"
+  },
+  {
+    "name": "University of California San Diego",
+    "openalex_id": "I36258959",
+    "country": "US",
+    "region": "US",
+    "city": "San Diego",
+    "type": "university"
+  },
+  {
+    "name": "University of Maryland, College Park",
+    "openalex_id": "I66946132",
+    "country": "US",
+    "region": "US",
+    "city": "College Park",
+    "type": "university"
+  },
+  {
+    "name": "University of California, Irvine",
+    "openalex_id": "I204250578",
+    "country": "US",
+    "region": "US",
+    "city": "Irvine",
+    "type": "university"
+  },
+  {
+    "name": "University of California, Santa Barbara",
+    "openalex_id": "I154570441",
+    "country": "US",
+    "region": "US",
+    "city": "Santa Barbara",
+    "type": "university"
+  },
+  {
+    "name": "University of California, Davis",
+    "openalex_id": "I84218800",
+    "country": "US",
+    "region": "US",
+    "city": "Davis",
+    "type": "university"
+  },
+  {
+    "name": "Technische Universität Berlin",
+    "openalex_id": "I4577782",
+    "country": "DE",
+    "region": "Europe",
+    "city": "Berlin",
+    "type": "university"
+  },
+  {
+    "name": "TU Wien",
+    "openalex_id": "I145847075",
+    "country": "AT",
+    "region": "Europe",
+    "city": "Vienna",
+    "type": "university"
+  },
+  {
+    "name": "Meta",
+    "openalex_id": "I4210114444",
+    "country": "US",
+    "region": "US",
+    "city": null,
+    "type": "industry_lab"
+  }
+]
