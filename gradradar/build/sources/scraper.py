@@ -86,6 +86,14 @@ def _fetch_playwright(url: str, timeout: int = 20000) -> str | None:
         return None
 
 
+def extract_title(html: str) -> str:
+    """Extract the <title> tag from HTML."""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "lxml")
+    title_tag = soup.find("title")
+    return title_tag.get_text(strip=True) if title_tag else ""
+
+
 def extract_text(html: str) -> str:
     """Extract readable text from HTML using trafilatura, falling back to BS4."""
     try:

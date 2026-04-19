@@ -13,6 +13,9 @@ from gradradar.config import get_llm_model
 
 litellm.suppress_debug_info = True
 
+# Use Haiku for extraction — structured field extraction doesn't need a large model
+ENRICHMENT_MODEL = "anthropic/claude-haiku-4-5-20251001"
+
 
 class PIExtraction(BaseModel):
     """Structured data extracted from a PI's web page."""
@@ -21,6 +24,16 @@ class PIExtraction(BaseModel):
         default=None,
         description="2-4 sentence summary of the PI's research interests and focus areas. "
         "Use their own words where possible.",
+    )
+    short_bio: str | None = Field(
+        default=None,
+        description="The PI's 'About me' or bio blurb as written on their page. "
+        "Keep it verbatim if short (under 300 words), otherwise summarize to ~150 words.",
+    )
+    department: str | None = Field(
+        default=None,
+        description="The department the PI belongs to (e.g. 'Computer Science', "
+        "'Electrical Engineering and Computer Science'). Use the official name from the page.",
     )
     is_taking_students: str | None = Field(
         default=None,
@@ -64,6 +77,8 @@ web page. The text below was scraped from a faculty or lab page.
 
 PI name: {pi_name}
 Institution: {institution_name}
+Page URL: {page_url}
+Page title: {page_title}
 
 Extract as much structured information as you can. Be conservative:
 - Only set is_taking_students to "yes" or "no" if there is clear evidence \
@@ -72,6 +87,18 @@ Extract as much structured information as you can. Be conservative:
   generic university template.
 - For research_description, summarize their actual research interests in 2-4 sentences. \
   Don't just list paper titles.
+- For short_bio, capture the "About me" or biographical blurb if present. Keep it \
+  verbatim if short, otherwise summarize. This is distinct from research_description — \
+  it's their personal background/story.
+- For department, YOU MUST infer this from ALL available signals. Check in this order: \
+  1. URL path segments: /cs/ = Computer Science, /eecs/ = EECS, /math/ = Mathematics, \
+     /physics/ = Physics, /statistics/ or /stat/ or /biostat/ = Statistics, \
+     /economics/ = Economics, /psychology/ = Psychology, /cse/ = Computer Science & Engineering, \
+     /ece/ or /ee/ = Electrical Engineering, /me/ = Mechanical Engineering, etc. \
+  2. Page title and headings \
+  3. Text mentions like "Department of..." or "School of..." \
+  4. The institution subdomain (e.g. cs.utexas.edu → Computer Science) \
+  If ANY of these signals are present, set the department. Only leave null if truly no signal exists.
 - For career_stage, infer from their title (e.g. "Assistant Professor" → assistant_professor).
 - Leave fields as null if the information isn't clearly present.
 
@@ -84,18 +111,22 @@ def extract_pi_from_text(
     page_text: str,
     pi_name: str,
     institution_name: str,
+    page_url: str = "",
+    page_title: str = "",
     model: str | None = None,
 ) -> PIExtraction:
     """Extract structured PI data from scraped page text."""
-    model = model or get_llm_model()
+    model = model or ENRICHMENT_MODEL
 
-    # Truncate very long pages to stay within context limits
-    if len(page_text) > 12000:
-        page_text = page_text[:12000] + "\n\n[...truncated...]"
+    # Truncate to 6K — useful info is typically in the first few KB
+    if len(page_text) > 6000:
+        page_text = page_text[:6000] + "\n\n[...truncated...]"
 
     prompt = EXTRACTION_PROMPT.format(
         pi_name=pi_name,
         institution_name=institution_name,
+        page_url=page_url,
+        page_title=page_title,
         page_text=page_text,
     )
 
