@@ -6,6 +6,8 @@ gradradar ships with a curated DuckDB database of **67,571 researchers** (6,222 
 
 ## Quick start
 
+Requires **Python 3.11+**.
+
 ```bash
 pip install git+https://github.com/TomerWeissman/gradradar.git
 gradradar init                                       # downloads the DB (~1.6 GB) from R2

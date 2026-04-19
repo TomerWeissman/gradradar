@@ -11,7 +11,7 @@ license = {text = "CC BY 4.0"}
 authors = [{name = "Tomer Weissman"}]
 
 dependencies = [
-    "duckdb>=0.10.0",
+    "duckdb>=1.0.0",
     "httpx>=0.27.0",
     "playwright>=1.44.0",
     "pdfplumber>=0.11.0",
