@@ -16,3 +16,6 @@ dist/
 # IDE
 .vscode/
 .idea/
+
+# Internal planning docs (not for public repo)
+docs/internal/
