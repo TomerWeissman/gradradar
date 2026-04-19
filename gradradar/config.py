@@ -5,8 +5,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load .env from project root (for development) or system env
+# Load .env from project root (for development) or system env.
+# Then also load ~/.gradradar/.env (where `gradradar setup` stores API keys).
+# load_dotenv is non-overriding by default, so cwd takes precedence — dev
+# users keep their project-local keys; end users fall through to the home file.
 load_dotenv()
+_home_env = Path(os.environ.get("GRADRADAR_HOME", Path.home() / ".gradradar")) / ".env"
+if _home_env.exists():
+    load_dotenv(_home_env)
 
 
 def get_gradradar_home() -> Path:

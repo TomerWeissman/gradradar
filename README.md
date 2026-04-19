@@ -10,11 +10,18 @@ Requires **Python 3.11+**.
 
 ```bash
 pip install git+https://github.com/TomerWeissman/gradradar.git
+gradradar setup    # guided wizard: download DB, create profile, add API key, first search
+```
+
+`setup` walks you through everything. Prefer to run each step yourself?
+
+```bash
 gradradar init                                       # downloads the DB (~1.6 GB) from R2
+gradradar profile setup                              # opens a Markdown profile in $EDITOR
 gradradar search "graph neural networks" --top 5
 ```
 
-The `init` step downloads the latest database snapshot from a public Cloudflare R2 bucket. No credentials required.
+The database is downloaded from a public Cloudflare R2 bucket. No credentials required.
 
 ## What you get
 
@@ -40,7 +47,8 @@ Profile changes invalidate the narration cache automatically (hashed into the ca
 
 | Command | What it does |
 | --- | --- |
-| `gradradar init` | Download the DB from R2 (run once) |
+| `gradradar setup` | Interactive first-run wizard (recommended) |
+| `gradradar init` | Just download the DB from R2 |
 | `gradradar search "<query>"` | Natural-language search with LLM query translation + rerank |
 | `gradradar search "<query>" --narrate` | Add 3–5 sentence personalized match narratives for top results |
 | `gradradar search "<query>" --no-llm` | Skip all LLM calls (free, FTS + SQL only) |

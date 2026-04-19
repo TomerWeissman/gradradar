@@ -33,6 +33,135 @@ def init(force, ver, offline):
     download(version=ver, force=force, offline=offline)
 
 
+def _write_env_key(path, key_name: str, value: str):
+    """Write or update a KEY=VALUE line in a .env file with 0600 perms."""
+    lines = path.read_text().splitlines() if path.exists() else []
+    new_line = f"{key_name}={value}"
+    for i, line in enumerate(lines):
+        if line.startswith(f"{key_name}="):
+            lines[i] = new_line
+            break
+    else:
+        lines.append(new_line)
+    path.write_text("\n".join(lines) + "\n")
+    path.chmod(0o600)
+
+
+@main.command()
+def setup():
+    """Interactive first-run wizard: DB, profile, API key, demo search."""
+    import os
+    import subprocess
+    import webbrowser
+
+    from rich.panel import Panel
+    from rich.prompt import Confirm, Prompt
+
+    from gradradar.config import get_gradradar_home, get_profile_path
+    from gradradar.db.downloader import download
+    from gradradar.profile import create_template, load_profile
+
+    ensure_dirs()
+
+    console.print(Panel.fit(
+        "[bold]Welcome to gradradar[/bold]\n\n"
+        "This wizard will walk you through:\n"
+        "  1. Downloading the research database (~1.6 GB)\n"
+        "  2. Creating your profile for personalized results\n"
+        "  3. (Optional) Setting up an Anthropic API key for smart search\n"
+        "  4. Running your first search",
+        title="Setup",
+        border_style="cyan",
+    ))
+
+    # --- Step 1: Database ---
+    console.print("\n[bold cyan]Step 1/4 — Database[/bold cyan]")
+    db_path = get_db_path()
+    if db_path.exists():
+        size_gb = db_path.stat().st_size / 1024 / 1024 / 1024
+        console.print(f"[green]✓[/green] Database already installed ({size_gb:.1f} GB) at {db_path}")
+    else:
+        console.print("Downloading database from Cloudflare R2 (~1.6 GB, one-time)...")
+        download()
+        if not db_path.exists():
+            console.print("[red]Database download failed. Retry with `gradradar init`.[/red]")
+            return
+
+    # --- Step 2: Profile ---
+    console.print("\n[bold cyan]Step 2/4 — Profile[/bold cyan]")
+    if load_profile():
+        console.print(f"[green]✓[/green] Profile already exists at {get_profile_path()}")
+    else:
+        console.print(
+            "A profile is a Markdown file describing your research interests, background,\n"
+            "and what you're looking for. It powers personalized ranking and match narratives."
+        )
+        if Confirm.ask("Create a profile now?", default=True):
+            path = create_template()
+            editor = os.environ.get("EDITOR", "nano")
+            console.print(f"[dim]Opening {path} in {editor}. Edit, save, and close to continue.[/dim]")
+            subprocess.run([editor, str(path)])
+            if load_profile():
+                console.print("[green]✓[/green] Profile saved.")
+            else:
+                console.print("[yellow]Profile is still empty. Edit it later with `gradradar profile setup`.[/yellow]")
+        else:
+            console.print("[dim]Skipped. Create one later with `gradradar profile setup`.[/dim]")
+
+    # --- Step 3: Anthropic API key ---
+    console.print("\n[bold cyan]Step 3/4 — Anthropic API key[/bold cyan]")
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        console.print("[green]✓[/green] ANTHROPIC_API_KEY already set in your environment.")
+    else:
+        console.print(
+            "An API key unlocks smart query translation, LLM re-ranking, and match narratives.\n"
+            "  Cost: ~$0.015/search, ~$0.045/search with [cyan]--narrate[/cyan].\n"
+            "  Without a key, plain keyword search ([cyan]--no-llm[/cyan]) still works free."
+        )
+        if Confirm.ask("Set up an API key now?", default=True):
+            url = "https://console.anthropic.com/settings/keys"
+            console.print(f"\nOpening [cyan]{url}[/cyan] in your browser.")
+            console.print("[dim]Sign in, create a key (enable billing if needed), then paste it here.[/dim]")
+            try:
+                webbrowser.open(url)
+            except Exception:
+                pass
+
+            key = Prompt.ask("\nPaste your API key", password=True).strip()
+            if not key.startswith("sk-ant-"):
+                console.print("[yellow]That doesn't look like an Anthropic key (should start with sk-ant-). Skipping.[/yellow]")
+                console.print("[dim]Re-run `gradradar setup` to retry.[/dim]")
+            else:
+                env_path = get_gradradar_home() / ".env"
+                _write_env_key(env_path, "ANTHROPIC_API_KEY", key)
+                os.environ["ANTHROPIC_API_KEY"] = key
+                console.print(f"[green]✓[/green] Key saved to {env_path} (permissions 600)")
+        else:
+            console.print("[dim]Skipped. You can run `gradradar setup` again, or export the key in your shell.[/dim]")
+
+    # --- Step 4: Demo search ---
+    console.print("\n[bold cyan]Step 4/4 — Try it out[/bold cyan]")
+    query = Prompt.ask(
+        "Type a search query to try (or press Enter to skip)",
+        default="",
+        show_default=False,
+    ).strip()
+    if query:
+        has_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
+        args = ["gradradar", "search", query, "--top", "5"]
+        if not has_key:
+            args.append("--no-llm")
+        console.print(f"[dim]Running: {' '.join(args)}[/dim]\n")
+        subprocess.run(args)
+
+    console.print("\n[bold green]Setup complete.[/bold green]")
+    console.print("Common next commands:")
+    console.print("  [cyan]gradradar search \"your topic\" --top 5[/cyan]          smart search")
+    console.print("  [cyan]gradradar search \"your topic\" --narrate[/cyan]         add match narratives")
+    console.print("  [cyan]gradradar recommend[/cyan]                             profile-driven recs")
+    console.print("  [cyan]gradradar profile show[/cyan]                          see your profile")
+
+
 # --- Profile commands ---
 
 
