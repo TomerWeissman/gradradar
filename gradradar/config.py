@@ -53,7 +53,10 @@ def get_r2_config() -> dict:
         "access_key_id": os.environ.get("CLOUDFLARE_R2_ACCESS_KEY_ID", ""),
         "secret_access_key": os.environ.get("CLOUDFLARE_R2_SECRET_ACCESS_KEY", ""),
         "bucket_name": os.environ.get("CLOUDFLARE_R2_BUCKET_NAME", "gradradar-db"),
-        "public_url": os.environ.get("CLOUDFLARE_R2_PUBLIC_URL", ""),
+        "public_url": os.environ.get(
+            "CLOUDFLARE_R2_PUBLIC_URL",
+            "https://pub-8bf4fefbf9e3404b8adb7e8cef33d954.r2.dev",
+        ),
         "endpoint_url": f"https://{account_id}.r2.cloudflarestorage.com" if account_id else "",
     }
     return keys

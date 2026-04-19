@@ -1,4 +1,14 @@
-"""Publish database to R2 and download on first run."""
+"""Publish database to R2 and download on first run.
+
+Two paths for reading from R2:
+  - Authenticated (publisher): boto3 / S3 client with credentials.
+  - Public (end user): plain HTTPS via the bucket's public R2.dev URL.
+
+`publish()` always uses the authenticated path. `download()` and
+`fetch_remote_manifest()` prefer the authenticated path when credentials
+are present, otherwise fall back to the public URL so end users without
+R2 credentials can still install the database.
+"""
 
 import hashlib
 import json
@@ -6,8 +16,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import boto3
+import httpx
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, DownloadColumn
+from rich.progress import BarColumn, DownloadColumn, Progress, SpinnerColumn, TextColumn
 
 from gradradar.config import get_db_path, get_gradradar_home, get_r2_config
 
@@ -28,6 +39,15 @@ def _get_s3_client():
     )
 
 
+def _has_credentials() -> bool:
+    return bool(get_r2_config()["access_key_id"])
+
+
+def _get_public_base_url() -> str:
+    """Return the bucket's public base URL, or empty string if unset."""
+    return get_r2_config()["public_url"].rstrip("/")
+
+
 def _sha256(path: Path) -> str:
     """Compute SHA-256 hex digest of a file."""
     h = hashlib.sha256()
@@ -41,19 +61,37 @@ def _get_manifest_path() -> Path:
     return get_gradradar_home() / "db" / "manifest.json"
 
 
-def fetch_remote_manifest(s3=None, bucket=None) -> dict | None:
-    """Fetch latest/manifest.json from R2. Returns None if not found."""
-    if s3 is None:
-        s3 = _get_s3_client()
-    if bucket is None:
-        bucket = get_r2_config()["bucket_name"]
-    try:
-        resp = s3.get_object(Bucket=bucket, Key="latest/manifest.json")
-        return json.loads(resp["Body"].read())
-    except s3.exceptions.NoSuchKey:
+def fetch_remote_manifest(s3=None, bucket=None, key: str = "latest/manifest.json") -> dict | None:
+    """Fetch a manifest from R2. Returns None if not found.
+
+    Uses S3 client when credentials are available (or explicitly passed in),
+    otherwise falls back to public HTTPS via CLOUDFLARE_R2_PUBLIC_URL.
+    """
+    # Authenticated path: explicit s3 client OR credentials present
+    if s3 is not None or _has_credentials():
+        if s3 is None:
+            s3 = _get_s3_client()
+        if bucket is None:
+            bucket = get_r2_config()["bucket_name"]
+        try:
+            resp = s3.get_object(Bucket=bucket, Key=key)
+            return json.loads(resp["Body"].read())
+        except s3.exceptions.NoSuchKey:
+            return None
+        except Exception:
+            return None
+
+    # Public path: no credentials, use public HTTPS
+    public_url = _get_public_base_url()
+    if not public_url:
         return None
+    try:
+        r = httpx.get(f"{public_url}/{key}", timeout=30.0)
+        if r.status_code == 200:
+            return r.json()
     except Exception:
         return None
+    return None
 
 
 def publish(version_override: str = None, message: str = None):
@@ -116,12 +154,49 @@ def publish(version_override: str = None, message: str = None):
         console.print(f"  URL: {r2['public_url']}/{version}/gradradar.duckdb")
 
 
+def _download_via_s3(bucket: str, key: str, dest: Path, expected_size: int):
+    """Download an object from R2 using the S3 client."""
+    s3 = _get_s3_client()
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        DownloadColumn(),
+    ) as progress:
+        task = progress.add_task("Downloading", total=expected_size)
+        with open(dest, "wb") as f:
+            s3.download_fileobj(
+                bucket, key, f,
+                Callback=lambda bytes_transferred: progress.update(task, advance=bytes_transferred),
+            )
+
+
+def _download_via_public_url(url: str, dest: Path, expected_size: int):
+    """Download a file via plain HTTPS from a public URL."""
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        DownloadColumn(),
+    ) as progress:
+        task = progress.add_task("Downloading", total=expected_size)
+        with httpx.stream("GET", url, timeout=None, follow_redirects=True) as r:
+            r.raise_for_status()
+            with open(dest, "wb") as f:
+                for chunk in r.iter_bytes(chunk_size=64 * 1024):
+                    f.write(chunk)
+                    progress.update(task, advance=len(chunk))
+
+
 def download(version: str = None, force: bool = False, offline: bool = False):
     """Download the database from R2.
 
     - Fetches manifest to get version + checksum
     - Downloads db file with progress bar
     - Verifies SHA-256
+
+    If R2 credentials are present, uses the S3 client. Otherwise falls back
+    to the bucket's public HTTPS URL (CLOUDFLARE_R2_PUBLIC_URL).
     """
     db_path = get_db_path()
     manifest_path = _get_manifest_path()
@@ -135,21 +210,18 @@ def download(version: str = None, force: bool = False, offline: bool = False):
         return
 
     r2 = get_r2_config()
-    s3 = _get_s3_client()
     bucket = r2["bucket_name"]
 
-    # Fetch manifest
-    if version:
-        key = f"{version}/manifest.json"
-    else:
-        key = "latest/manifest.json"
+    if not _has_credentials() and not _get_public_base_url():
+        console.print("[red]No R2 credentials and no CLOUDFLARE_R2_PUBLIC_URL set. Cannot download.[/red]")
+        return
 
-    try:
-        resp = s3.get_object(Bucket=bucket, Key=key)
-        manifest = json.loads(resp["Body"].read())
-    except Exception as e:
-        console.print(f"[red]Failed to fetch manifest: {e}[/red]")
-        console.print("[dim]No database has been published yet. Run 'gradradar build' and 'gradradar db publish' first.[/dim]")
+    # Fetch manifest (auto-detects auth vs public path)
+    manifest_key = f"{version}/manifest.json" if version else "latest/manifest.json"
+    manifest = fetch_remote_manifest(key=manifest_key)
+    if manifest is None:
+        console.print("[red]Failed to fetch manifest from R2.[/red]")
+        console.print("[dim]No database has been published yet, or the public URL is misconfigured.[/dim]")
         return
 
     target_version = manifest["version"]
@@ -158,23 +230,20 @@ def download(version: str = None, force: bool = False, offline: bool = False):
 
     console.print(f"[blue]Downloading v{target_version} ({expected_size / 1024 / 1024:.1f} MB)...[/blue]")
 
-    # Download with progress
     db_path.parent.mkdir(parents=True, exist_ok=True)
     db_key = f"{target_version}/gradradar.duckdb"
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        DownloadColumn(),
-    ) as progress:
-        task = progress.add_task("Downloading", total=expected_size)
-
-        with open(db_path, "wb") as f:
-            s3.download_fileobj(
-                bucket, db_key, f,
-                Callback=lambda bytes_transferred: progress.update(task, advance=bytes_transferred),
-            )
+    try:
+        if _has_credentials():
+            _download_via_s3(bucket, db_key, db_path, expected_size)
+        else:
+            url = f"{_get_public_base_url()}/{db_key}"
+            _download_via_public_url(url, db_path, expected_size)
+    except Exception as e:
+        if db_path.exists():
+            db_path.unlink()
+        console.print(f"[red]Download failed: {e}[/red]")
+        return
 
     # Verify checksum
     console.print("[dim]Verifying checksum...[/dim]")
