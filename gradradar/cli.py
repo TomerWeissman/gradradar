@@ -44,24 +44,48 @@ def profile():
 
 @profile.command("setup")
 def profile_setup():
-    """Interactive 5-field profile setup wizard."""
+    """Create profile template and open it in your editor."""
     ensure_dirs()
-    from gradradar.profile import interactive_setup
-    p = interactive_setup()
-    console.print(f"\n[green]Profile saved with interests: {p['research_interests']}[/green]")
+    from gradradar.profile import create_template, load_profile
+    import subprocess, os
+
+    path = create_template()
+    editor = os.environ.get("EDITOR", "nano")
+
+    if load_profile():
+        console.print(f"[dim]Profile already exists at {path}[/dim]")
+    else:
+        console.print(f"[green]Created profile template at {path}[/green]")
+
+    console.print(f"[bold]Opening in {editor}...[/bold]")
+    console.print("[dim]Edit the file to personalize your search results, then save and close.[/dim]")
+    subprocess.run([editor, str(path)])
+
+    if load_profile():
+        console.print(f"\n[green]Profile saved at {path}[/green]")
+    else:
+        console.print(f"\n[yellow]Profile is empty. Edit {path} when ready.[/yellow]")
 
 
 @profile.command("show")
 def profile_show():
     """Display the current profile."""
-    import json
     from gradradar.profile import load_profile
+    from gradradar.config import get_profile_path
 
     p = load_profile()
     if not p:
         console.print("[yellow]No profile found. Run 'gradradar profile setup' first.[/yellow]")
         return
-    console.print_json(json.dumps(p, indent=2))
+    console.print(f"[dim]{get_profile_path()}[/dim]\n")
+    console.print(p)
+
+
+@profile.command("path")
+def profile_path():
+    """Print the profile file path."""
+    from gradradar.config import get_profile_path
+    console.print(str(get_profile_path()))
 
 
 # --- Search commands ---
@@ -82,7 +106,8 @@ def profile_show():
 @click.option("--clarify", is_flag=True, help="Ask clarifying questions before search")
 @click.option("--no-llm", is_flag=True, help="Skip LLM query translation, use raw query as search terms")
 @click.option("--no-rerank", is_flag=True, help="Skip LLM re-ranking of results")
-def search(query, search_type, region, top, mode, no_profile, as_json, web, no_web, explain, explain_only, clarify, no_llm, no_rerank):
+@click.option("--narrate", is_flag=True, help="Generate detailed match narratives for top results")
+def search(query, search_type, region, top, mode, no_profile, as_json, web, no_web, explain, explain_only, clarify, no_llm, no_rerank, narrate):
     """Search for PhD labs or Masters programs."""
     import duckdb
     from gradradar.profile import load_profile
@@ -133,11 +158,15 @@ def search(query, search_type, region, top, mode, no_profile, as_json, web, no_w
         if explain_only:
             return
 
-    # Execute search
-    con = duckdb.connect(str(db_path), read_only=True)
+    # Execute search (read-write when narrating so we can cache narrations)
+    use_narrate = narrate and not no_llm
+    con = duckdb.connect(str(db_path), read_only=not use_narrate)
     try:
         with console.status("[bold green]Searching..."):
-            results = run_search(con, plan, mode=mode, no_rerank=no_rerank or no_llm, profile=profile)
+            results = run_search(
+                con, plan, mode=mode, no_rerank=no_rerank or no_llm,
+                profile=profile, use_narrate=use_narrate,
+            )
     finally:
         con.close()
 
@@ -324,7 +353,7 @@ def recommend(top, no_rerank, as_json):
     finally:
         con.close()
 
-    console.print(f"\n[bold]Recommendations based on: {profile.get('research_interests', '')}[/bold]")
+    console.print(f"\n[bold]Recommendations based on your profile[/bold]")
     print_results({"pis": pis, "programs": []}, as_json=as_json)
 
 
@@ -335,7 +364,8 @@ def recommend(top, no_rerank, as_json):
 @click.option("--skip-discovery", is_flag=True, help="Skip URL discovery, use existing source_url.")
 @click.option("--skip-scrape", is_flag=True, help="Skip scraping, only discover URLs.")
 @click.option("--dry-extract", is_flag=True, help="Fetch HTML only, skip LLM extraction.")
-def enrich(limit, min_h_index, resume, skip_discovery, skip_scrape, dry_extract):
+@click.option("--cs-only", is_flag=True, help="Only enrich PIs with papers in CS-adjacent venues.")
+def enrich(limit, min_h_index, resume, skip_discovery, skip_scrape, dry_extract, cs_only):
     """Enrich PI records by scraping faculty pages and extracting data via LLM."""
     from gradradar.build.enrich import run_enrich
 
@@ -353,6 +383,7 @@ def enrich(limit, min_h_index, resume, skip_discovery, skip_scrape, dry_extract)
         skip_discovery=skip_discovery,
         skip_scrape=skip_scrape,
         dry_extract=dry_extract,
+        cs_only=cs_only,
     )
 
 

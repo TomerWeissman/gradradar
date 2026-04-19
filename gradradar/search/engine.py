@@ -7,6 +7,7 @@ import duckdb
 from gradradar.search.fts_search import fts_search_pis, fts_search_papers, fts_search_programs
 from gradradar.search.sql_search import sql_filter_pis, get_top_papers_for_pi
 from gradradar.search.llm_query import QueryPlan
+from gradradar.search.narrator import narrate
 from gradradar.search.reranker import rerank
 
 
@@ -15,7 +16,7 @@ def search_pis(
     plan: QueryPlan,
     mode: str = "hybrid",
     use_rerank: bool = True,
-    profile: dict | None = None,
+    profile: str | None = None,
 ) -> list[dict]:
     """Execute a PI search using the given QueryPlan.
 
@@ -120,13 +121,17 @@ def run_search(
     plan: QueryPlan,
     mode: str = "hybrid",
     no_rerank: bool = False,
-    profile: dict | None = None,
+    profile: str | None = None,
+    use_narrate: bool = False,
 ) -> dict:
     """Top-level search dispatcher. Returns a dict with results by type."""
     output = {"query_plan": plan.model_dump(), "pis": [], "programs": []}
 
     if plan.search_type in ("phd", "both"):
         output["pis"] = search_pis(con, plan, mode=mode, use_rerank=not no_rerank, profile=profile)
+
+        if use_narrate and output["pis"]:
+            output["pis"] = narrate(plan.search_terms, output["pis"], profile=profile, con=con)
 
     if plan.search_type in ("masters", "both"):
         output["programs"] = search_programs(con, plan)

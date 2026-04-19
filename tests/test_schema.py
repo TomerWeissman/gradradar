@@ -51,8 +51,8 @@ def test_schema_migration_recorded(db):
 def test_empty_tables_have_zero_rows(db):
     for table in ALL_TABLES:
         if table == "schema_migrations":
-            # Has the initial migration record
-            assert get_row_count(db, table) == 1, f"{table} should have 1 migration row"
+            # Has migration records (initial + any applied migrations)
+            assert get_row_count(db, table) >= 1, f"{table} should have at least 1 migration row"
         else:
             assert get_row_count(db, table) == 0, f"{table} should be empty"
 

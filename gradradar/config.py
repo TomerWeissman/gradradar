@@ -23,7 +23,7 @@ def get_db_path() -> Path:
 
 
 def get_profile_path() -> Path:
-    return get_gradradar_home() / "profile.json"
+    return get_gradradar_home() / "profile.md"
 
 
 def get_cache_path() -> Path:

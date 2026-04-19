@@ -9,6 +9,7 @@ import litellm
 from pydantic import BaseModel, Field
 
 from gradradar.config import get_llm_model
+from gradradar.profile import format_profile_for_llm
 
 litellm.suppress_debug_info = True
 
@@ -56,7 +57,7 @@ def rerank(
     results: list[dict],
     top_k: int = 10,
     model: str | None = None,
-    profile: dict | None = None,
+    profile: str | None = None,
 ) -> list[dict]:
     """Re-rank search results using LLM relevance scoring.
 
@@ -86,7 +87,8 @@ def rerank(
 
     profile_section = ""
     if profile:
-        profile_section = f"\nUser profile (use to boost relevant matches):\n{json.dumps(profile, indent=2)}\n"
+        profile_text = format_profile_for_llm(profile)
+        profile_section = f"\nUser profile (use to boost relevant matches):\n{profile_text}\n"
 
     prompt = RERANK_PROMPT.format(
         query=query,

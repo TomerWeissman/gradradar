@@ -79,6 +79,8 @@ CREATE TABLE IF NOT EXISTS pis (
     funding_sources             TEXT,
     funding_expiry              TEXT,
     lab_name                    TEXT,
+    short_bio                   TEXT,
+    department_name              TEXT,
     research_description        TEXT,
     theory_category             TEXT CHECK (theory_category IN ('theory', 'applied', 'mixed', 'unknown')) DEFAULT 'unknown',
     theory_category_source      TEXT CHECK (theory_category_source IN ('venue_derived', 'llm_assigned')),
@@ -373,7 +375,21 @@ CREATE TABLE IF NOT EXISTS update_queue (
     status          TEXT CHECK (status IN ('pending', 'pending_verification', 'completed', 'failed', 'manual_review'))
 );
 
--- 26. schema_migrations
+-- 26. narrations (cached LLM narratives for search results)
+CREATE TABLE IF NOT EXISTS narrations (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pi_id           UUID REFERENCES pis(id),
+    query           TEXT NOT NULL,
+    profile_hash    TEXT NOT NULL,
+    narrative       TEXT NOT NULL,
+    match_strength  TEXT CHECK (match_strength IN ('strong', 'moderate', 'weak')),
+    key_papers      TEXT,
+    created_at      TIMESTAMP DEFAULT current_timestamp,
+    model           TEXT,
+    UNIQUE (pi_id, query, profile_hash)
+);
+
+-- 27. schema_migrations
 CREATE TABLE IF NOT EXISTS schema_migrations (
     migration_id    TEXT PRIMARY KEY,
     applied_at      TIMESTAMP DEFAULT current_timestamp
@@ -388,14 +404,14 @@ ALL_TABLES = [
     "paper_topics", "programs", "program_courses", "program_admissions_profile",
     "workshops", "pi_workshops", "research_groups", "department_culture",
     "co_advising_relationships", "possible_duplicates", "scrape_log",
-    "web_searches", "update_queue", "schema_migrations",
+    "web_searches", "update_queue", "narrations", "schema_migrations",
 ]
 
 # Expected column counts per table (for validation)
 TABLE_COLUMN_COUNTS = {
     "institutions": 14,
     "departments": 17,
-    "pis": 35,
+    "pis": 37,
     "pi_students": 11,
     "pi_industry_connections": 6,
     "pi_media": 9,
@@ -418,6 +434,7 @@ TABLE_COLUMN_COUNTS = {
     "scrape_log": 10,
     "web_searches": 10,
     "update_queue": 9,
+    "narrations": 9,
     "schema_migrations": 2,
 }
 
@@ -434,7 +451,41 @@ def create_schema(db_path: Path) -> duckdb.DuckDBPyConnection:
             SELECT 1 FROM schema_migrations WHERE migration_id = 'v1_initial_schema'
         )
     """)
+    _run_migrations(con)
     return con
+
+
+def _run_migrations(con: duckdb.DuckDBPyConnection):
+    """Apply pending schema migrations."""
+    applied = {r[0] for r in con.execute("SELECT migration_id FROM schema_migrations").fetchall()}
+
+    if "v2_add_short_bio_department" not in applied:
+        # Add short_bio and department_name columns to pis table
+        cols = {r[0] for r in con.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'pis'").fetchall()}
+        if "short_bio" not in cols:
+            con.execute("ALTER TABLE pis ADD COLUMN short_bio TEXT")
+        if "department_name" not in cols:
+            con.execute("ALTER TABLE pis ADD COLUMN department_name TEXT")
+        con.execute("INSERT INTO schema_migrations (migration_id) VALUES ('v2_add_short_bio_department')")
+
+    if "v3_add_narrations_table" not in applied:
+        tables = {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'").fetchall()}
+        if "narrations" not in tables:
+            con.execute("""
+                CREATE TABLE narrations (
+                    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    pi_id           UUID REFERENCES pis(id),
+                    query           TEXT NOT NULL,
+                    profile_hash    TEXT NOT NULL,
+                    narrative       TEXT NOT NULL,
+                    match_strength  TEXT CHECK (match_strength IN ('strong', 'moderate', 'weak')),
+                    key_papers      TEXT,
+                    created_at      TIMESTAMP DEFAULT current_timestamp,
+                    model           TEXT,
+                    UNIQUE (pi_id, query, profile_hash)
+                )
+            """)
+        con.execute("INSERT INTO schema_migrations (migration_id) VALUES ('v3_add_narrations_table')")
 
 
 def create_fts_indexes(con: duckdb.DuckDBPyConnection):
@@ -445,7 +496,8 @@ def create_fts_indexes(con: duckdb.DuckDBPyConnection):
     con.execute("INSTALL fts;")
     con.execute("LOAD fts;")
 
-    # PI search documents view
+    # PI search documents view — only include enriched PIs to avoid noise
+    # from 60K+ non-CS researchers whose papers incidentally match queries
     con.execute("""
         CREATE OR REPLACE VIEW pi_search_docs AS
         SELECT
@@ -456,6 +508,7 @@ def create_fts_indexes(con: duckdb.DuckDBPyConnection):
         FROM pis p
         LEFT JOIN author_paper ap ON ap.author_id = p.id
         LEFT JOIN papers pa ON pa.id = ap.paper_id
+        WHERE p.research_description IS NOT NULL
         GROUP BY p.id, p.name, p.research_description;
     """)
 

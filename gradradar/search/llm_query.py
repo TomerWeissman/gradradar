@@ -108,7 +108,7 @@ Guidelines:
 
 def translate_query(
     query: str,
-    profile: dict | None = None,
+    profile: str | None = None,
     model: str | None = None,
 ) -> QueryPlan:
     """Translate a natural language query into a structured QueryPlan."""
@@ -118,7 +118,7 @@ def translate_query(
 
     user_content = f"Query: {query}"
     if profile:
-        user_content += f"\n\nUser profile:\n{json.dumps(profile, indent=2)}"
+        user_content += f"\n\nUser profile:\n{profile}"
 
     messages.append({"role": "user", "content": user_content})
 

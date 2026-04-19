@@ -23,7 +23,8 @@ def print_results(results: dict, as_json: bool = False):
     programs = results.get("programs", [])
 
     if not pis and not programs:
-        console.print("\n[yellow]No results found.[/yellow]\n")
+        console.print("\n[yellow]No results found.[/yellow]")
+        console.print("[dim]Try broader terms, --no-rerank to skip filtering, or --mode sql for structured search.[/dim]\n")
         return
 
     if pis:
@@ -54,6 +55,7 @@ def _print_pi_card(rank: int, pi: dict):
     """Print a single PI result card."""
     name = pi.get("name", "Unknown")
     institution = pi.get("institution_name", "Unknown institution")
+    department = pi.get("department_name", "")
     region = pi.get("region", "")
     country = pi.get("country", "")
     location = f"{country}" if country else region
@@ -62,7 +64,10 @@ def _print_pi_card(rank: int, pi: dict):
     header = Text()
     header.append(f"{rank}. ", style="bold yellow")
     header.append(f"{name}", style="bold white")
-    header.append(f"  {institution}", style="dim")
+    inst_str = f"  {institution}"
+    if department:
+        inst_str += f", {department}"
+    header.append(inst_str, style="dim")
     if location:
         header.append(f" ({location})", style="dim")
 
@@ -109,10 +114,30 @@ def _print_pi_card(rank: int, pi: dict):
             content.append(f" — {reason}", style="magenta")
         content.append("\n")
 
-    if desc:
+    # Narrative from narrator (detailed match explanation)
+    narrative = pi.get("narrative")
+    if narrative:
+        match_str = pi.get("match_strength", "")
+        if match_str:
+            style_map = {"strong": "bold green", "moderate": "yellow", "weak": "dim"}
+            content.append(f"\nMatch: {match_str}\n", style=style_map.get(match_str, ""))
+        content.append(f"{narrative}\n", style="")
+
+        key_papers = pi.get("key_papers", [])
+        if key_papers:
+            content.append("\nKey papers for your interests:\n", style="bold")
+            for kp in key_papers:
+                content.append(f"  → {kp}\n", style="cyan")
+    elif desc:
         content.append(f"\n{desc}\n", style="dim")
 
-    if papers:
+    bio = pi.get("short_bio", "")
+    if bio:
+        if len(bio) > 200:
+            bio = bio[:200] + "..."
+        content.append(f"\nBio: {bio}\n", style="dim italic")
+
+    if papers and not narrative:
         content.append("\nTop papers:\n", style="bold")
         for p in papers[:3]:
             year = p.get("year", "")
