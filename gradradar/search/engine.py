@@ -116,24 +116,53 @@ def _enrich_results(
     return results
 
 
+def _cloud_search_pis(plan: QueryPlan, use_rerank: bool, profile: str | None) -> list[dict]:
+    """Cloud-backed PI search (Supabase PostgREST + plfts).
+
+    Skips local SQL filters and paper enrichment (papers aren't in the cloud DB
+    for v0). Still runs the LLM reranker against the returned candidates when
+    `use_rerank` is on.
+    """
+    from gradradar.cloud import cloud_search_pis
+
+    fetch_limit = max(plan.limit * 3, 30)
+    results = cloud_search_pis(plan.search_terms, limit=fetch_limit)
+    if not results:
+        return []
+
+    if use_rerank:
+        results = rerank(plan.search_terms, results, top_k=plan.limit, profile=profile)
+
+    return results[: plan.limit]
+
+
 def run_search(
-    con: duckdb.DuckDBPyConnection,
+    con: duckdb.DuckDBPyConnection | None,
     plan: QueryPlan,
     mode: str = "hybrid",
     no_rerank: bool = False,
     profile: str | None = None,
     use_narrate: bool = False,
+    cloud: bool = False,
 ) -> dict:
-    """Top-level search dispatcher. Returns a dict with results by type."""
+    """Top-level search dispatcher. Returns a dict with results by type.
+
+    If `cloud=True`, PI search is served from the Supabase backend; `con` is
+    still used for the local narration cache (if narrating) and for Masters
+    programs (which aren't in the cloud yet).
+    """
     output = {"query_plan": plan.model_dump(), "pis": [], "programs": []}
 
     if plan.search_type in ("phd", "both"):
-        output["pis"] = search_pis(con, plan, mode=mode, use_rerank=not no_rerank, profile=profile)
+        if cloud:
+            output["pis"] = _cloud_search_pis(plan, use_rerank=not no_rerank, profile=profile)
+        else:
+            output["pis"] = search_pis(con, plan, mode=mode, use_rerank=not no_rerank, profile=profile)
 
         if use_narrate and output["pis"]:
             output["pis"] = narrate(plan.search_terms, output["pis"], profile=profile, con=con)
 
-    if plan.search_type in ("masters", "both"):
+    if plan.search_type in ("masters", "both") and con is not None:
         output["programs"] = search_programs(con, plan)
 
     return output

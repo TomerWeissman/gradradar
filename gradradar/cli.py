@@ -58,7 +58,6 @@ def setup():
     from rich.prompt import Confirm, Prompt
 
     from gradradar.config import get_gradradar_home, get_profile_path
-    from gradradar.db.downloader import download
     from gradradar.profile import create_template, load_profile
 
     ensure_dirs()
@@ -66,29 +65,16 @@ def setup():
     console.print(Panel.fit(
         "[bold]Welcome to gradradar[/bold]\n\n"
         "This wizard will walk you through:\n"
-        "  1. Downloading the research database (~1.6 GB)\n"
-        "  2. Creating your profile for personalized results\n"
-        "  3. (Optional) Setting up an Anthropic API key for smart search\n"
+        "  1. Creating your profile for personalized results\n"
+        "  2. (Optional) Setting up an Anthropic API key for smart search\n"
+        "  3. Choosing your data source (cloud or local snapshot)\n"
         "  4. Running your first search",
         title="Setup",
         border_style="cyan",
     ))
 
-    # --- Step 1: Database ---
-    console.print("\n[bold cyan]Step 1/4 — Database[/bold cyan]")
-    db_path = get_db_path()
-    if db_path.exists():
-        size_gb = db_path.stat().st_size / 1024 / 1024 / 1024
-        console.print(f"[green]✓[/green] Database already installed ({size_gb:.1f} GB) at {db_path}")
-    else:
-        console.print("Downloading database from Cloudflare R2 (~1.6 GB, one-time)...")
-        download()
-        if not db_path.exists():
-            console.print("[red]Database download failed. Retry with `gradradar init`.[/red]")
-            return
-
-    # --- Step 2: Profile ---
-    console.print("\n[bold cyan]Step 2/4 — Profile[/bold cyan]")
+    # --- Step 1: Profile ---
+    console.print("\n[bold cyan]Step 1/4 — Profile[/bold cyan]")
     if load_profile():
         console.print(f"[green]✓[/green] Profile already exists at {get_profile_path()}")
     else:
@@ -108,8 +94,8 @@ def setup():
         else:
             console.print("[dim]Skipped. Create one later with `gradradar profile setup`.[/dim]")
 
-    # --- Step 3: Anthropic API key ---
-    console.print("\n[bold cyan]Step 3/4 — Anthropic API key[/bold cyan]")
+    # --- Step 2: Anthropic API key ---
+    console.print("\n[bold cyan]Step 2/4 — Anthropic API key[/bold cyan]")
     if os.environ.get("ANTHROPIC_API_KEY"):
         console.print("[green]✓[/green] ANTHROPIC_API_KEY already set in your environment.")
     else:
@@ -139,6 +125,41 @@ def setup():
         else:
             console.print("[dim]Skipped. You can run `gradradar setup` again, or export the key in your shell.[/dim]")
 
+    # --- Step 3: Data source ---
+    console.print("\n[bold cyan]Step 3/4 — Data source[/bold cyan]")
+    console.print(Panel.fit(
+        "[bold]Cloud (recommended)[/bold]  — no download, 67,571 researchers\n"
+        "  • Searches the hosted community database directly\n"
+        "  • Always up to date with community contributions\n"
+        "  • Missing: per-PI paper lists, citation-based ranking, SQL filters\n\n"
+        "[bold]Local snapshot[/bold]  — one-time ~1.6 GB download\n"
+        "  • Full feature set: suggested papers per PI, citation ranking,\n"
+        "    structured SQL filters (h-index bounds, paper count, etc.)\n"
+        "  • Works offline, fully reproducible\n"
+        "  • Snapshot is point-in-time; community contributions won't appear\n"
+        "    until the next published release\n\n"
+        "You can switch any time: pass [cyan]--local[/cyan] to use the downloaded DB.",
+        title="Data source options",
+        border_style="dim",
+    ))
+
+    downloaded_now = False
+    if db_path_exists := get_db_path().exists():
+        console.print(f"[green]✓[/green] Local snapshot already present at {get_db_path()}")
+    else:
+        if Confirm.ask(
+            "Download the full local snapshot now? (takes a few minutes)",
+            default=False,
+        ):
+            from gradradar.db.downloader import download
+            try:
+                download(version=None, force=False, offline=False)
+                downloaded_now = True
+            except Exception as e:
+                console.print(f"[yellow]Download failed: {e}. You can retry later with `gradradar init`.[/yellow]")
+        else:
+            console.print("[dim]Using cloud only. Run `gradradar init` later if you want the full snapshot.[/dim]")
+
     # --- Step 4: Demo search ---
     console.print("\n[bold cyan]Step 4/4 — Try it out[/bold cyan]")
     query = Prompt.ask(
@@ -156,10 +177,13 @@ def setup():
 
     console.print("\n[bold green]Setup complete.[/bold green]")
     console.print("Common next commands:")
-    console.print("  [cyan]gradradar search \"your topic\" --top 5[/cyan]          smart search")
+    console.print("  [cyan]gradradar search \"your topic\" --top 5[/cyan]          smart search (cloud)")
     console.print("  [cyan]gradradar search \"your topic\" --narrate[/cyan]         add match narratives")
-    console.print("  [cyan]gradradar recommend[/cyan]                             profile-driven recs")
+    console.print("  [cyan]gradradar contribute <pi_id>[/cyan]                    enrich a PI and share")
     console.print("  [cyan]gradradar profile show[/cyan]                          see your profile")
+    if not (db_path_exists or downloaded_now):
+        console.print("  [cyan]gradradar init[/cyan]                                  download the full snapshot (~1.6 GB)")
+        console.print("  [cyan]gradradar search \"your topic\" --local[/cyan]           search against the local snapshot")
 
 
 # --- Profile commands ---
@@ -236,7 +260,8 @@ def profile_path():
 @click.option("--no-llm", is_flag=True, help="Skip LLM query translation, use raw query as search terms")
 @click.option("--no-rerank", is_flag=True, help="Skip LLM re-ranking of results")
 @click.option("--narrate", is_flag=True, help="Generate detailed match narratives for top results")
-def search(query, search_type, region, top, mode, no_profile, as_json, web, no_web, explain, explain_only, clarify, no_llm, no_rerank, narrate):
+@click.option("--local", "use_local", is_flag=True, help="Use the local DuckDB instead of the hosted cloud backend")
+def search(query, search_type, region, top, mode, no_profile, as_json, web, no_web, explain, explain_only, clarify, no_llm, no_rerank, narrate, use_local):
     """Search for PhD labs or Masters programs."""
     import duckdb
     from gradradar.profile import load_profile
@@ -244,9 +269,13 @@ def search(query, search_type, region, top, mode, no_profile, as_json, web, no_w
     from gradradar.search.engine import run_search
     from gradradar.search.formatting import print_results, print_query_plan
 
+    # Cloud is the default. --local opts back into the 1.6 GB local DuckDB
+    # (useful for offline work or running against a custom/private snapshot).
+    cloud = not use_local
+
     db_path = get_db_path()
-    if not db_path.exists():
-        console.print("[red]No database found. Run 'gradradar init' or 'gradradar build' first.[/red]")
+    if use_local and not db_path.exists():
+        console.print("[red]--local requested but no local database found. Run 'gradradar init' to download one.[/red]")
         return
 
     # Load profile unless --no-profile
@@ -289,15 +318,32 @@ def search(query, search_type, region, top, mode, no_profile, as_json, web, no_w
 
     # Execute search (read-write when narrating so we can cache narrations)
     use_narrate = narrate and not no_llm
-    con = duckdb.connect(str(db_path), read_only=not use_narrate)
-    try:
-        with console.status("[bold green]Searching..."):
-            results = run_search(
-                con, plan, mode=mode, no_rerank=no_rerank or no_llm,
-                profile=profile, use_narrate=use_narrate,
-            )
-    finally:
-        con.close()
+
+    if cloud:
+        # Cloud mode still opens a local DB only if narrating (for the cache).
+        # With no local DB, narration is still possible but won't be cached.
+        con = None
+        if use_narrate and db_path.exists():
+            con = duckdb.connect(str(db_path), read_only=False)
+        try:
+            with console.status("[bold green]Searching..."):
+                results = run_search(
+                    con, plan, mode=mode, no_rerank=no_rerank or no_llm,
+                    profile=profile, use_narrate=use_narrate, cloud=True,
+                )
+        finally:
+            if con is not None:
+                con.close()
+    else:
+        con = duckdb.connect(str(db_path), read_only=not use_narrate)
+        try:
+            with console.status("[bold green]Searching..."):
+                results = run_search(
+                    con, plan, mode=mode, no_rerank=no_rerank or no_llm,
+                    profile=profile, use_narrate=use_narrate,
+                )
+        finally:
+            con.close()
 
     print_results(results, as_json=as_json)
 
@@ -422,6 +468,121 @@ def db_create():
 
     size_kb = db_path.stat().st_size / 1024
     console.print(f"[green]Created database at {db_path} ({size_kb:.1f} KB)[/green]")
+
+
+@main.command()
+@click.argument("pi_id")
+@click.option("--url", default=None, help="Faculty page URL (auto-discovered if omitted)")
+@click.option("--yes", "-y", is_flag=True, help="Skip the review/confirm prompt")
+def contribute(pi_id, url, yes):
+    """Enrich a PI locally using your API key and share the result with the community.
+
+    Downloads the faculty page, extracts structured fields with Haiku, shows you
+    what will be contributed, then POSTs to the hosted Supabase backend. Uses
+    your own ANTHROPIC_API_KEY for the extraction LLM call.
+    """
+    import hashlib
+    from rich.panel import Panel
+    from rich.prompt import Confirm
+
+    from gradradar.cloud import cloud_get_pi, cloud_get_institution, cloud_contribute
+    from gradradar.build.sources.scraper import fetch_html, extract_text, extract_title
+    from gradradar.build.sources.url_discovery import find_pi_url
+    from gradradar.build.extractors.llm_extractor import extract_pi_from_text, ENRICHMENT_MODEL
+
+    pi = cloud_get_pi(pi_id)
+    if not pi:
+        console.print(f"[red]PI {pi_id} not found in cloud DB.[/red]")
+        return
+
+    institution_name = ""
+    if pi.get("institution_id"):
+        inst = cloud_get_institution(pi["institution_id"])
+        if inst:
+            institution_name = inst.get("name", "")
+
+    console.print(Panel.fit(
+        f"[bold]{pi['name']}[/bold]\n"
+        f"Institution: {institution_name or '(unknown)'}\n"
+        f"Current research_description: "
+        f"{(pi.get('research_description') or '[dim]—[/dim]')[:200]}",
+        title="PI",
+        border_style="cyan",
+    ))
+
+    source_url = url or pi.get("personal_url") or pi.get("lab_url")
+    if not source_url:
+        console.print("[yellow]No URL given. Searching for a faculty page...[/yellow]")
+        source_url = find_pi_url(pi["name"], institution_name)
+        if not source_url:
+            console.print("[red]Could not find a faculty page. Pass --url.[/red]")
+            return
+        console.print(f"Found: {source_url}")
+
+    console.print(f"[cyan]Fetching {source_url}...[/cyan]")
+    html = fetch_html(source_url)
+    if not html:
+        console.print("[red]Could not fetch the page.[/red]")
+        return
+
+    page_text = extract_text(html)
+    page_title = extract_title(html)
+    content_hash = "sha256:" + hashlib.sha256(html.encode()).hexdigest()
+
+    console.print("[cyan]Extracting fields with Haiku...[/cyan]")
+    try:
+        extraction = extract_pi_from_text(
+            page_text=page_text,
+            pi_name=pi["name"],
+            institution_name=institution_name,
+            page_url=source_url,
+            page_title=page_title,
+        )
+    except Exception as e:
+        console.print(f"[red]Extraction failed: {e}[/red]")
+        return
+
+    # Map PIExtraction → cloud schema field names. `department` in the extractor
+    # maps to `department_name` on the pis table.
+    raw = extraction.model_dump(exclude_none=True)
+    fields = {}
+    for k, v in raw.items():
+        if k == "department":
+            fields["department_name"] = v
+        else:
+            fields[k] = v
+    if not fields:
+        console.print("[yellow]Nothing extractable from that page. Skipping.[/yellow]")
+        return
+
+    table = Table(title="Fields to contribute", show_lines=False)
+    table.add_column("Field", style="cyan")
+    table.add_column("Value", overflow="fold")
+    for k, v in fields.items():
+        table.add_row(k, str(v)[:300])
+    console.print(table)
+
+    if not yes:
+        if not Confirm.ask("Submit this contribution? [CC BY 4.0, publicly visible]", default=True):
+            console.print("Aborted.")
+            return
+
+    try:
+        result = cloud_contribute(
+            pi_id=pi_id,
+            fields=fields,
+            source_url=source_url,
+            content_hash=content_hash,
+            model=ENRICHMENT_MODEL,
+        )
+    except Exception as e:
+        console.print(f"[red]Contribution rejected: {e}[/red]")
+        return
+
+    console.print(f"[green]✓ Contributed {len(result.get('fields_written', []))} fields.[/green]")
+    rl = result.get("rate_limit", {})
+    if rl:
+        console.print(f"[dim]rate limit: {rl.get('used')}/{rl.get('limit')} per {rl.get('window')}[/dim]")
 
 
 @db.command("publish")

@@ -96,8 +96,8 @@ def _print_pi_card(rank: int, pi: dict):
 
     # Research description
     desc = pi.get("research_description", "")
-    if desc and len(desc) > 200:
-        desc = desc[:200] + "..."
+    if desc and len(desc) > 500:
+        desc = desc[:500] + "..."
 
     # Top papers
     papers = pi.get("top_papers", [])
