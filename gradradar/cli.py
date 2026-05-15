@@ -66,7 +66,7 @@ def setup():
         "[bold]Welcome to gradradar[/bold]\n\n"
         "This wizard will walk you through:\n"
         "  1. Creating your profile for personalized results\n"
-        "  2. (Optional) Setting up an Anthropic API key for smart search\n"
+        "  2. (Optional) Choosing an LLM provider and entering its API key\n"
         "  3. Choosing your data source (cloud or local snapshot)\n"
         "  4. Running your first search",
         title="Setup",
@@ -94,36 +94,90 @@ def setup():
         else:
             console.print("[dim]Skipped. Create one later with `gradradar profile setup`.[/dim]")
 
-    # --- Step 2: Anthropic API key ---
-    console.print("\n[bold cyan]Step 2/4 — Anthropic API key[/bold cyan]")
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        console.print("[green]✓[/green] ANTHROPIC_API_KEY already set in your environment.")
+    # --- Step 2: LLM provider & API key ---
+    console.print("\n[bold cyan]Step 2/4 — LLM provider & API key[/bold cyan]")
+
+    env_path = get_gradradar_home() / ".env"
+    known_key_vars = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY")
+    already_set = [v for v in known_key_vars if os.environ.get(v)]
+
+    if already_set:
+        current_model = os.environ.get("GRADRADAR_LLM_MODEL", "anthropic/claude-sonnet-4-5 (default)")
+        console.print(f"[green]✓[/green] Found {', '.join(already_set)} already in your environment.")
+        console.print(f"   Search model: [cyan]{current_model}[/cyan]")
     else:
         console.print(
             "An API key unlocks smart query translation, LLM re-ranking, and match narratives.\n"
-            "  Cost: ~$0.015/search, ~$0.045/search with [cyan]--narrate[/cyan].\n"
-            "  Without a key, plain keyword search ([cyan]--no-llm[/cyan]) still works free."
+            "  Cost: ~$0.015/search with Claude Sonnet (less with smaller models), ~$0.045 with [cyan]--narrate[/cyan].\n"
+            "  Without a key, plain keyword search ([cyan]--no-llm[/cyan]) still works free.\n"
+            "  gradradar works with any [link=https://docs.litellm.ai/docs/providers]LiteLLM-compatible[/link] provider."
         )
-        if Confirm.ask("Set up an API key now?", default=True):
-            url = "https://console.anthropic.com/settings/keys"
-            console.print(f"\nOpening [cyan]{url}[/cyan] in your browser.")
-            console.print("[dim]Sign in, create a key (enable billing if needed), then paste it here.[/dim]")
-            try:
-                webbrowser.open(url)
-            except Exception:
-                pass
+        if Confirm.ask("Set up an LLM provider now?", default=True):
+            # (label, env_var, default_model, signup_url, expected_key_prefix_or_None)
+            providers = [
+                ("Anthropic (Claude)", "ANTHROPIC_API_KEY", "anthropic/claude-sonnet-4-5",
+                 "https://console.anthropic.com/settings/keys", "sk-ant-"),
+                ("OpenAI (GPT)", "OPENAI_API_KEY", "openai/gpt-4o-mini",
+                 "https://platform.openai.com/api-keys", None),
+                ("Google (Gemini)", "GEMINI_API_KEY", "gemini/gemini-2.5-flash",
+                 "https://aistudio.google.com/apikey", None),
+                ("Other (custom)", None, None, None, None),
+            ]
+            console.print("\nChoose your provider:")
+            for i, (label, *_r) in enumerate(providers, 1):
+                console.print(f"  [cyan]{i}[/cyan]  {label}")
+            choices = [str(i) for i in range(1, len(providers) + 1)]
+            idx = int(Prompt.ask("Provider", choices=choices, default="1"))
+            label, env_name, default_model, url, prefix = providers[idx - 1]
 
-            key = Prompt.ask("\nPaste your API key", password=True).strip()
-            if not key.startswith("sk-ant-"):
-                console.print("[yellow]That doesn't look like an Anthropic key (should start with sk-ant-). Skipping.[/yellow]")
-                console.print("[dim]Re-run `gradradar setup` to retry.[/dim]")
+            if env_name is None:
+                # Custom provider — user provides env var name + LiteLLM model string
+                console.print(
+                    "\nSee provider list: [cyan]https://docs.litellm.ai/docs/providers[/cyan]"
+                )
+                env_name = Prompt.ask(
+                    "API key env var name (e.g. MISTRAL_API_KEY)"
+                ).strip()
+                default_model = Prompt.ask(
+                    "LiteLLM model string (e.g. mistral/mistral-large-latest)"
+                ).strip()
+                prefix = None
+
+            if not env_name or not default_model:
+                console.print("[yellow]Missing env var name or model string. Skipping.[/yellow]")
             else:
-                env_path = get_gradradar_home() / ".env"
-                _write_env_key(env_path, "ANTHROPIC_API_KEY", key)
-                os.environ["ANTHROPIC_API_KEY"] = key
-                console.print(f"[green]✓[/green] Key saved to {env_path} (permissions 600)")
+                if url:
+                    console.print(f"\nOpening [cyan]{url}[/cyan] in your browser.")
+                    try:
+                        webbrowser.open(url)
+                    except Exception:
+                        pass
+                console.print("[dim]Sign in, create a key, then paste it here.[/dim]")
+                key = Prompt.ask(f"\nPaste your {label} API key", password=True).strip()
+                if not key:
+                    console.print("[yellow]Empty key. Skipping.[/yellow]")
+                elif prefix and not key.startswith(prefix):
+                    console.print(
+                        f"[yellow]That doesn't look like a {label} key (should start with {prefix}). Skipping.[/yellow]"
+                    )
+                    console.print("[dim]Re-run `gradradar setup` to retry.[/dim]")
+                else:
+                    _write_env_key(env_path, env_name, key)
+                    os.environ[env_name] = key
+                    # Only write the model if it isn't the built-in default — keeps .env clean.
+                    if default_model != "anthropic/claude-sonnet-4-5":
+                        _write_env_key(env_path, "GRADRADAR_LLM_MODEL", default_model)
+                        os.environ["GRADRADAR_LLM_MODEL"] = default_model
+                    console.print(f"[green]✓[/green] Saved to {env_path} (permissions 600)")
+                    console.print(f"   Provider: [cyan]{label}[/cyan]   Model: [cyan]{default_model}[/cyan]")
         else:
-            console.print("[dim]Skipped. You can run `gradradar setup` again, or export the key in your shell.[/dim]")
+            console.print("[dim]Skipped. You can run `gradradar setup` again, or hand-edit ~/.gradradar/.env.[/dim]")
+
+    console.print(
+        f"\n[dim]To change providers or keys later: edit [cyan]{env_path}[/cyan] or re-run [cyan]gradradar setup[/cyan].\n"
+        "  Relevant vars: ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY (etc.), "
+        "GRADRADAR_LLM_MODEL (search), GRADRADAR_EXTRACTION_MODEL (contribute).[/dim]"
+    )
 
     # --- Step 3: Data source ---
     console.print("\n[bold cyan]Step 3/4 — Data source[/bold cyan]")
@@ -477,9 +531,10 @@ def db_create():
 def contribute(pi_id, url, yes):
     """Enrich a PI locally using your API key and share the result with the community.
 
-    Downloads the faculty page, extracts structured fields with Haiku, shows you
+    Downloads the faculty page, extracts structured fields with an LLM (Claude
+    Haiku by default; override with GRADRADAR_EXTRACTION_MODEL), shows you
     what will be contributed, then POSTs to the hosted Supabase backend. Uses
-    your own ANTHROPIC_API_KEY for the extraction LLM call.
+    your own API key for the extraction LLM call.
     """
     import hashlib
     from rich.panel import Panel
@@ -488,7 +543,8 @@ def contribute(pi_id, url, yes):
     from gradradar.cloud import cloud_get_pi, cloud_get_institution, cloud_contribute
     from gradradar.build.sources.scraper import fetch_html, extract_text, extract_title
     from gradradar.build.sources.url_discovery import find_pi_url
-    from gradradar.build.extractors.llm_extractor import extract_pi_from_text, ENRICHMENT_MODEL
+    from gradradar.build.extractors.llm_extractor import extract_pi_from_text
+    from gradradar.config import get_extraction_model
 
     pi = cloud_get_pi(pi_id)
     if not pi:
@@ -529,7 +585,7 @@ def contribute(pi_id, url, yes):
     page_title = extract_title(html)
     content_hash = "sha256:" + hashlib.sha256(html.encode()).hexdigest()
 
-    console.print("[cyan]Extracting fields with Haiku...[/cyan]")
+    console.print(f"[cyan]Extracting fields with {get_extraction_model()}...[/cyan]")
     try:
         extraction = extract_pi_from_text(
             page_text=page_text,
@@ -573,7 +629,7 @@ def contribute(pi_id, url, yes):
             fields=fields,
             source_url=source_url,
             content_hash=content_hash,
-            model=ENRICHMENT_MODEL,
+            model=get_extraction_model(),
         )
     except Exception as e:
         console.print(f"[red]Contribution rejected: {e}[/red]")

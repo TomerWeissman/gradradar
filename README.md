@@ -69,7 +69,7 @@ gradradar contribute <pi_id> --url https://cs.example.edu/~prof-name/
 
 The CLI:
 1. Fetches the faculty page.
-2. Uses **your** Anthropic key (~$0.001 per contribution) to extract structured fields with Haiku.
+2. Uses **your** API key (~$0.001 per contribution with the default Claude Haiku; configurable via `GRADRADAR_EXTRACTION_MODEL`) to extract structured fields.
 3. Shows you exactly what will be contributed, and asks for confirmation.
 4. POSTs to the hosted Edge Function, which rate-limits (30/hour per IP), logs provenance per field, and updates the shared DB.
 
@@ -79,7 +79,7 @@ Contributions are CC BY 4.0 and publicly visible. Every field keeps a `source_ur
 
 By default, search uses an LLM for query understanding and relevance re-ranking (~$0.015 per search with Claude Sonnet). Adding `--narrate` generates per-result narratives (~$0.045). Narratives are cached locally in `~/.gradradar/db/` keyed by `(pi_id, query, profile_hash)` — repeat queries are free.
 
-Set `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY` + `GRADRADAR_LLM_MODEL`) in your environment or a `.env` file.
+Set `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY` + `GRADRADAR_LLM_MODEL`, e.g. `openai/gpt-4o-mini`) in your environment or a `.env` file. `GRADRADAR_LLM_MODEL` controls the search-time model; `GRADRADAR_EXTRACTION_MODEL` independently controls the `gradradar contribute` extractor (defaults to `anthropic/claude-haiku-4-5-20251001`, falls back to `GRADRADAR_LLM_MODEL` if unset).
 
 To run with no API costs, use `--no-llm`:
 

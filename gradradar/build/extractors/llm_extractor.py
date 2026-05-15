@@ -9,12 +9,9 @@ import instructor
 import litellm
 from pydantic import BaseModel, Field
 
-from gradradar.config import get_llm_model
+from gradradar.config import get_extraction_model
 
 litellm.suppress_debug_info = True
-
-# Use Haiku for extraction — structured field extraction doesn't need a large model
-ENRICHMENT_MODEL = "anthropic/claude-haiku-4-5-20251001"
 
 
 class PIExtraction(BaseModel):
@@ -116,7 +113,7 @@ def extract_pi_from_text(
     model: str | None = None,
 ) -> PIExtraction:
     """Extract structured PI data from scraped page text."""
-    model = model or ENRICHMENT_MODEL
+    model = model or get_extraction_model()
 
     # Truncate to 6K — useful info is typically in the first few KB
     if len(page_text) > 6000:
