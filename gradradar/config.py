@@ -77,7 +77,7 @@ def get_extraction_model() -> str:
     # Falls back to GRADRADAR_LLM_MODEL so users who only set one var still get a working contribute path.
     return os.environ.get(
         "GRADRADAR_EXTRACTION_MODEL",
-        os.environ.get("GRADRADAR_LLM_MODEL", "anthropic/claude-haiku-4-5-20251001"),
+        os.environ.get("GRADRADAR_LLM_MODEL", "anthropic/claude-haiku-5-5"),
     )
 
 

@@ -838,5 +838,37 @@
     "region": "US",
     "city": null,
     "type": "industry_lab"
+  },
+  {
+    "name": "Stevens Institute of Technology",
+    "openalex_id": "I108468826",
+    "country": "US",
+    "region": "US",
+    "city": "Hoboken",
+    "type": "university"
+  },
+  {
+    "name": "Florida State University",
+    "openalex_id": "I103163165",
+    "country": "US",
+    "region": "US",
+    "city": "Tallahassee",
+    "type": "university"
+  },
+  {
+    "name": "North Carolina State University",
+    "openalex_id": "I137902535",
+    "country": "US",
+    "region": "US",
+    "city": "Raleigh",
+    "type": "university"
+  },
+  {
+    "name": "Worcester Polytechnic Institute",
+    "openalex_id": "I107077323",
+    "country": "US",
+    "region": "US",
+    "city": "Worcester",
+    "type": "university"
   }
 ]

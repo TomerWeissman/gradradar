@@ -24,7 +24,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, MofNCo
 from gradradar.build.extractors.department_parser import infer_department
 from gradradar.build.extractors.llm_extractor import extract_pi_from_text, PIExtraction
 from gradradar.build.sources.scraper import fetch_html, extract_text, extract_title
-from gradradar.build.sources.url_discovery import find_pi_url
+from gradradar.build.sources.url_discovery import find_pi_url, name_on_page
 from gradradar.config import get_gradradar_home
 from gradradar.db.schema import create_fts_indexes
 from gradradar.db.writer import _update_record
@@ -70,6 +70,7 @@ def run_enrich(
     dry_extract: bool = False,
     cs_only: bool = False,
     workers: int = DEFAULT_WORKERS,
+    openalex_ids: list[str] | None = None,
 ):
     """Run the PI enrichment pipeline.
 
@@ -83,6 +84,7 @@ def run_enrich(
         dry_extract: Fetch HTML only, skip LLM extraction
         cs_only: Only enrich PIs with papers in CS-adjacent venues
         workers: Number of parallel workers
+        openalex_ids: If set, only enrich PIs with these OpenAlex author IDs
     """
     con = duckdb.connect(str(db_path))
 
@@ -94,7 +96,9 @@ def run_enrich(
         console.print(f"[yellow]Resuming enrichment: {len(completed_ids)} already done[/yellow]")
 
     # Get PIs that need enrichment
-    pis = _get_pis_to_enrich(con, min_h_index=min_h_index, limit=limit, cs_only=cs_only)
+    pis = _get_pis_to_enrich(
+        con, min_h_index=min_h_index, limit=limit, cs_only=cs_only, openalex_ids=openalex_ids
+    )
     pis = [p for p in pis if p["id"] not in completed_ids]
 
     if not pis:
@@ -225,6 +229,11 @@ def _scrape_and_extract(
     if not page_text or len(page_text) < 50:
         return None
 
+    # Search often lands on a colleague's or a directory page; extracting from it
+    # would attach someone else's email and research to this PI.
+    if not name_on_page(pi["name"], page_text):
+        return None
+
     page_title = extract_title(html)
 
     extraction = extract_pi_from_text(
@@ -303,6 +312,7 @@ def _get_pis_to_enrich(
     min_h_index: int = 20,
     limit: int | None = None,
     cs_only: bool = False,
+    openalex_ids: list[str] | None = None,
 ) -> list[dict]:
     """Get PIs that need enrichment, prioritized by h_index.
 
@@ -331,6 +341,12 @@ def _get_pis_to_enrich(
           )
         """
 
+    id_filter = ""
+    params = [min_h_index]
+    if openalex_ids is not None:
+        id_filter = "AND list_contains(?, p.openalex_id)"
+        params.append(openalex_ids)
+
     limit_clause = f"LIMIT {limit}" if limit else ""
     results = con.execute(f"""
         SELECT p.id, p.name, p.openalex_id, p.source_url, p.h_index,
@@ -340,9 +356,10 @@ def _get_pis_to_enrich(
         WHERE p.research_description IS NULL
           AND p.h_index >= ?
           {cs_filter}
+          {id_filter}
         ORDER BY p.h_index DESC
         {limit_clause}
-    """, [min_h_index]).fetchall()
+    """, params).fetchall()
 
     return [
         {

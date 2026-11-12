@@ -23,6 +23,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn
 
 from gradradar.build.sources.openalex import (
+    OpenAlexBudgetExhausted,
     extract_authorships,
     fetch_authors_for_institution,
     fetch_citations_for_works,
@@ -44,8 +45,18 @@ from gradradar.db.writer import (
 console = Console()
 
 # Theory venues for venue-derived theory_category
-THEORY_VENUES = {"COLT", "ALT", "STOC", "FOCS", "SODA", "ITCS", "CCC", "SoCG"}
-APPLIED_VENUES = {"NeurIPS", "ICML", "ICLR", "AAAI", "CVPR", "ICCV", "ECCV", "ACL", "EMNLP", "NAACL"}
+THEORY_VENUES = {
+    "COLT", "ALT", "STOC", "FOCS", "SODA", "ITCS", "CCC", "SoCG",
+    # Financial math / probability
+    "Mathematical Finance", "Finance and Stochastics", "SIAM Journal on Financial Mathematics",
+    "Annals of Applied Probability",
+}
+APPLIED_VENUES = {
+    "NeurIPS", "ICML", "ICLR", "AAAI", "CVPR", "ICCV", "ECCV", "ACL", "EMNLP", "NAACL",
+    # Quant finance / OR
+    "Quantitative Finance", "Journal of Finance", "Review of Financial Studies",
+    "Journal of Financial Economics", "Management Science", "Operations Research",
+}
 
 CHECKPOINT_FILE = "build_checkpoint.json"
 
@@ -80,6 +91,7 @@ def run_build(
     seeds_path: Path,
     sample: float = None,
     resume: bool = False,
+    topics_file: str = "cs_math_topic_ids.json",
 ):
     """Run the full OpenAlex ingestion pipeline.
 
@@ -88,6 +100,7 @@ def run_build(
         seeds_path: Path to the seeds/ directory
         sample: If set, only process this fraction of institutions (0.0-1.0)
         resume: If True, skip already-completed phases and batches
+        topics_file: Seeds file of OpenAlex topic IDs that scopes which authors are fetched
     """
     run_id = f"build_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
@@ -186,13 +199,23 @@ def run_build(
                 progress.update(task, description=f"{inst['name']}")
 
                 try:
-                    authors = fetch_authors_for_institution(oa_inst_id)
+                    authors = fetch_authors_for_institution(oa_inst_id, topics_file=topics_file)
                     for author in authors:
                         pi_data = map_author_to_pi(author, institution_id=db_inst_id)
                         db_pi_id = upsert_pi(con, pi_data)
                         oa_author_id = author["id"].replace("https://openalex.org/", "")
                         author_id_map[oa_author_id] = db_pi_id
                         total_pis += 1
+                except OpenAlexBudgetExhausted:
+                    _save_checkpoint({
+                        "run_id": run_id,
+                        "last_completed_phase": "phase_1",
+                        "inst_id_map": inst_id_map,
+                        "seed_institutions": seed_institutions,
+                        "author_id_map": author_id_map,
+                        "completed_institutions": list(completed_institutions),
+                    })
+                    raise
                 except Exception as e:
                     console.print(f"  [red]Error fetching authors for {inst['name']}: {e}[/red]")
                     total_failed += 1
@@ -227,6 +250,8 @@ def run_build(
     else:
         console.print("[dim]Phase 2: Skipped (already completed)[/dim]")
         author_id_map = checkpoint.get("author_id_map", {})
+
+    _save_fetched_authors(author_id_map, topics_file)
 
     # --- Phase 3: Fetch papers ---
     if last_phase < "phase_3":
@@ -273,6 +298,18 @@ def run_build(
                                     "is_corresponding": authorship["is_corresponding"],
                                 })
                                 total_links += 1
+                except OpenAlexBudgetExhausted:
+                    con.execute("CHECKPOINT")
+                    _save_checkpoint({
+                        "run_id": run_id,
+                        "last_completed_phase": "phase_2",
+                        "inst_id_map": inst_id_map,
+                        "seed_institutions": seed_institutions,
+                        "author_id_map": author_id_map,
+                        "paper_id_map": paper_id_map,
+                        "phase3_batch": batch_num - 1,
+                    })
+                    raise
                 except Exception as e:
                     console.print(f"  [red]Error in batch {batch_num}: {e}[/red]")
                     total_failed += 1
@@ -322,6 +359,8 @@ def run_build(
                 if citing_oa_id in paper_id_map and cited_oa_id in paper_id_map:
                     insert_citation(con, paper_id_map[citing_oa_id], paper_id_map[cited_oa_id])
                     citation_count += 1
+        except OpenAlexBudgetExhausted:
+            raise  # checkpoint is still at phase_3, so --resume redoes citations
         except Exception as e:
             console.print(f"  [red]Error building citations: {e}[/red]")
 
@@ -377,6 +416,14 @@ def run_build(
     console.print(f"  Papers: {total_papers}")
     console.print(f"  Author-paper links: {total_links}")
     console.print(f"  Database: {db_path}")
+
+
+def _save_fetched_authors(author_id_map: dict, topics_file: str):
+    """Write the OpenAlex IDs this build fetched, so enrichment can target just them."""
+    path = get_gradradar_home() / "db" / f"authors_{Path(topics_file).stem}.json"
+    with open(path, "w") as f:
+        json.dump(sorted(author_id_map), f)
+    console.print(f"  Saved {len(author_id_map)} fetched author IDs to {path}\n")
 
 
 def _compute_citation_velocity(con: duckdb.DuckDBPyConnection):
@@ -444,9 +491,9 @@ def _compute_theory_category(con: duckdb.DuckDBPyConnection):
         applied_count = 0
         for (venue,) in venues:
             venue_upper = venue.upper() if venue else ""
-            if any(tv in venue_upper for tv in THEORY_VENUES):
+            if any(tv.upper() in venue_upper for tv in THEORY_VENUES):
                 theory_count += 1
-            elif any(av in venue_upper for av in APPLIED_VENUES):
+            elif any(av.upper() in venue_upper for av in APPLIED_VENUES):
                 applied_count += 1
 
         total = theory_count + applied_count

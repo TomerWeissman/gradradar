@@ -659,7 +659,9 @@ def db_publish(ver, message):
 @click.option("--resume", is_flag=True, help="Resume from last checkpoint.")
 @click.option("--sample", type=float, default=None, help="Process only a fraction of data.")
 @click.option("--dry-extract", is_flag=True, help="Fetch HTML only, skip LLM extraction.")
-def build(full, phase, resume, sample, dry_extract):
+@click.option("--topics", "topics_file", default="cs_math_topic_ids.json",
+              help="Seeds file of OpenAlex topic IDs to scope authors (e.g. finance_topic_ids.json).")
+def build(full, phase, resume, sample, dry_extract, topics_file):
     """Run the build pipeline."""
     from pathlib import Path
     from gradradar.build.pipeline import run_build
@@ -668,7 +670,12 @@ def build(full, phase, resume, sample, dry_extract):
     db_path = get_db_path()
     seeds_path = Path(__file__).parent.parent / "seeds"
 
-    run_build(db_path=db_path, seeds_path=seeds_path, sample=sample, resume=resume)
+    from gradradar.build.sources.openalex import OpenAlexBudgetExhausted
+    try:
+        run_build(db_path=db_path, seeds_path=seeds_path, sample=sample, resume=resume, topics_file=topics_file)
+    except OpenAlexBudgetExhausted as e:
+        console.print(f"\n[yellow]{e}[/yellow]")
+        raise SystemExit(1)
 
 
 @main.command()
@@ -711,7 +718,10 @@ def recommend(top, no_rerank, as_json):
 @click.option("--skip-scrape", is_flag=True, help="Skip scraping, only discover URLs.")
 @click.option("--dry-extract", is_flag=True, help="Fetch HTML only, skip LLM extraction.")
 @click.option("--cs-only", is_flag=True, help="Only enrich PIs with papers in CS-adjacent venues.")
-def enrich(limit, min_h_index, resume, skip_discovery, skip_scrape, dry_extract, cs_only):
+@click.option("--openalex-ids", "openalex_ids_file", type=click.Path(exists=True), default=None,
+              help="JSON list of OpenAlex author IDs to restrict enrichment to (e.g. written by build --topics).")
+@click.option("--workers", default=4, type=int, help="Parallel workers for discovery and scraping.")
+def enrich(limit, min_h_index, resume, skip_discovery, skip_scrape, dry_extract, cs_only, openalex_ids_file, workers):
     """Enrich PI records by scraping faculty pages and extracting data via LLM."""
     from gradradar.build.enrich import run_enrich
 
@@ -730,7 +740,17 @@ def enrich(limit, min_h_index, resume, skip_discovery, skip_scrape, dry_extract,
         skip_scrape=skip_scrape,
         dry_extract=dry_extract,
         cs_only=cs_only,
+        openalex_ids=_load_json_list(openalex_ids_file),
+        workers=workers,
     )
+
+
+def _load_json_list(path: str | None) -> list[str] | None:
+    import json
+    if not path:
+        return None
+    with open(path) as f:
+        return json.load(f)
 
 
 # --- Other commands ---

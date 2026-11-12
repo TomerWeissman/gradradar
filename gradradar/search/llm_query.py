@@ -78,7 +78,8 @@ class QueryPlan(BaseModel):
 
 SYSTEM_PROMPT = """\
 You are a search query planner for gradradar, a tool that helps students find \
-PhD labs and Masters programs in ML, CS, and Math.
+PhD labs and Masters programs in quantitative fields \
+such as ML, CS, Math, Statistics, Operations Research, and Financial Engineering.
 
 Given a natural language query (and optionally a user profile), produce a \
 structured QueryPlan to search the database.

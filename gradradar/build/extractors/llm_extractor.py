@@ -7,11 +7,44 @@ from __future__ import annotations
 
 import instructor
 import litellm
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from gradradar.config import get_extraction_model
 
 litellm.suppress_debug_info = True
+
+
+# Values the DB CHECK constraints accept. The model sometimes answers in free text
+# ("Lecturer", "Professor Emeritus"); anything we can't map becomes None so one bad
+# field doesn't discard the whole record.
+CAREER_STAGES = {
+    "assistant_professor", "associate_professor", "full_professor",
+    "postdoc", "industry_researcher", "research_scientist",
+}
+CAREER_STAGE_ALIASES = {
+    "professor": "full_professor",
+    "postdoctoral_researcher": "postdoc",
+    "postdoctoral_fellow": "postdoc",
+    "postdoctoral_scholar": "postdoc",
+}
+TAKING_STUDENTS = {"yes", "no", "unknown"}
+
+
+def _normalize_career_stage(value):
+    if not isinstance(value, str):
+        return None
+    key = value.strip().lower().replace("-", "_").replace(" ", "_")
+    key = CAREER_STAGE_ALIASES.get(key, key)
+    return key if key in CAREER_STAGES else None
+
+
+def _normalize_taking_students(value):
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if not isinstance(value, str):
+        return None
+    key = value.strip().lower()
+    return key if key in TAKING_STUDENTS else None
 
 
 class PIExtraction(BaseModel):
@@ -66,6 +99,27 @@ class PIExtraction(BaseModel):
         default=None,
         description="Comma-separated list of funding sources mentioned (e.g. 'NSF, NIH, DARPA').",
     )
+
+
+    @field_validator("career_stage", mode="before")
+    @classmethod
+    def _career_stage_in_enum(cls, v):
+        return _normalize_career_stage(v)
+
+    @field_validator("is_taking_students", mode="before")
+    @classmethod
+    def _taking_students_in_enum(cls, v):
+        return _normalize_taking_students(v)
+
+    @field_validator("taking_students_confidence", mode="before")
+    @classmethod
+    def _confidence_in_range(cls, v):
+        # DB CHECK requires 0.0-1.0; drop anything outside rather than fail the row.
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            return None
+        return v if 0.0 <= v <= 1.0 else None
 
 
 EXTRACTION_PROMPT = """\
@@ -132,7 +186,6 @@ def extract_pi_from_text(
         model=model,
         response_model=PIExtraction,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.0,
         max_tokens=1024,
     )
     return result

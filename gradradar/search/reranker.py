@@ -31,7 +31,8 @@ class RerankedResults(BaseModel):
 
 RERANK_PROMPT = """\
 You are a search relevance judge for gradradar, a tool helping students find \
-PhD labs in ML, CS, and Math.
+PhD labs in quantitative fields \
+such as ML, CS, Math, Statistics, Operations Research, and Financial Engineering.
 
 Given a user's search query and a list of candidate PIs, score each PI's \
 relevance to the query from 0.0 to 1.0.

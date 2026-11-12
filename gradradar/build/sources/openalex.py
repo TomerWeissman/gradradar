@@ -4,6 +4,7 @@ Uses the OpenAlex REST API with polite pool access (email in User-Agent).
 Rate limit: 10 req/s for polite pool, 100K req/day.
 """
 
+import os
 import time
 from datetime import datetime
 
@@ -17,10 +18,50 @@ HEADERS = {"User-Agent": "mailto:gradradar@example.com"}
 REQUEST_DELAY = 0.12  # ~8 req/s to stay well within limits
 
 
-def _get(url: str, params: dict = None) -> dict:
+class OpenAlexBudgetExhausted(RuntimeError):
+    """OpenAlex daily credit budget is spent; retrying won't help until it resets."""
+
+
+def _headers() -> dict:
+    """Request headers, with OPENALEX_API_KEY if set (needed for cursor paging and a 10x daily budget).
+
+    Sent as a header rather than a query param so the key never shows up in logged URLs.
+    """
+    api_key = os.environ.get("OPENALEX_API_KEY")
+    return {**HEADERS, "Authorization": f"Bearer {api_key}"} if api_key else HEADERS
+
+
+def _get(url: str, params: dict = None, max_retries: int = 3) -> dict:
     """Make a rate-limited GET request to OpenAlex."""
-    time.sleep(REQUEST_DELAY)
-    resp = httpx.get(url, params=params, headers=HEADERS, timeout=30)
+    headers = _headers()
+    for attempt in range(max_retries + 1):
+        time.sleep(REQUEST_DELAY)
+        try:
+            resp = httpx.get(url, params=params, headers=headers, timeout=30)
+        except httpx.TransportError:
+            if attempt == max_retries:
+                raise
+            time.sleep(2 ** attempt)
+            continue
+        # Gateway timeouts on large OR-filters are transient; retry with backoff.
+        if resp.status_code >= 500 and attempt < max_retries:
+            time.sleep(2 ** attempt)
+            continue
+        if resp.status_code != 429:
+            break
+        try:
+            retry_after = float(resp.headers.get("Retry-After", 0))
+        except ValueError:
+            retry_after = 0
+        # Short waits are per-second throttling; a long wait or zero remaining
+        # means the daily budget is gone, so stop instead of hammering.
+        if retry_after > 60 or resp.headers.get("X-RateLimit-Remaining") == "0":
+            reset = resp.headers.get("X-RateLimit-Reset", "?")
+            raise OpenAlexBudgetExhausted(
+                f"OpenAlex daily budget exhausted (resets in {reset}s). "
+                "Set OPENALEX_API_KEY for a higher limit, then rerun with --resume."
+            )
+        time.sleep(max(retry_after, 2 ** attempt))
     resp.raise_for_status()
     return resp.json()
 
@@ -48,25 +89,32 @@ def _paginate(url: str, params: dict, max_results: int = None) -> list[dict]:
     return results
 
 
-def _load_topic_ids() -> list[str]:
-    """Load CS/Math topic IDs from seeds file."""
+DEFAULT_TOPICS_FILE = "cs_math_topic_ids.json"
+
+
+def _load_topic_ids(topics_file: str = DEFAULT_TOPICS_FILE) -> list[str]:
+    """Load OpenAlex topic IDs from a file in seeds/ (defaults to CS/Math)."""
     import json
     from pathlib import Path
-    path = Path(__file__).parent.parent.parent.parent / "seeds" / "cs_math_topic_ids.json"
+    path = Path(__file__).parent.parent.parent.parent / "seeds" / topics_file
     if path.exists():
         with open(path) as f:
             return json.load(f)
     return []
 
 
-def fetch_authors_for_institution(openalex_institution_id: str, min_works: int = 5) -> list[dict]:
-    """Fetch authors at an institution with works in CS/Math/Stats.
+def fetch_authors_for_institution(
+    openalex_institution_id: str,
+    min_works: int = 5,
+    topics_file: str = DEFAULT_TOPICS_FILE,
+) -> list[dict]:
+    """Fetch authors at an institution with works in the seeded topics.
 
     Makes multiple API calls with batched topic IDs (max 90 per request)
     to cover all relevant CS/Math subfields. Deduplicates results.
     Returns raw OpenAlex author records.
     """
-    topic_ids = _load_topic_ids()
+    topic_ids = _load_topic_ids(topics_file)
     if not topic_ids:
         # Fallback: no topic filter, just institution + min works + h_index
         params = {

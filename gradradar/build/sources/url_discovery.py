@@ -5,7 +5,10 @@ For each PI, constructs a targeted search query and returns the best candidate U
 
 from __future__ import annotations
 
+import re
 import time
+import unicodedata
+from urllib.parse import urlparse
 
 from ddgs import DDGS
 
@@ -22,7 +25,13 @@ SKIP_DOMAINS = {
     "twitter.com", "x.com", "researchgate.net", "orcid.org",
     "openalex.org", "dblp.org", "arxiv.org", "youtube.com",
     "wikipedia.org", "github.com", "amazon.com",
+    # Seen returning wrong or useless pages for finance PIs
+    "ratemyprofessors.com", "scholar.google.", "research.com",
+    "nytimes.com", "foxnews.com", "wsj.com", "bloomberg.com", "cnn.com",
 }
+
+# Path fragments of login / SSO redirects, which never hold profile content
+LOGIN_MARKERS = ("/idp/", "/sso", "/saml", "/login", "/cas/login")
 
 
 def find_pi_url(
@@ -44,18 +53,48 @@ def find_pi_url(
     if delay > 0:
         time.sleep(delay)
 
+    # Only consider results whose title/snippet/URL mention the PI; otherwise search
+    # tends to hand back a colleague's page or a department directory.
+    results = [r for r in results if name_on_page(pi_name, " ".join(
+        [r.get("title", ""), r.get("body", ""), r.get("href", "")]))]
+
     for r in results:
         url = r.get("href", "")
         if _is_good_faculty_url(url):
             return url
 
-    # Fallback: return first non-skip result
+    # Fallback: return first usable result even if it doesn't look like a faculty page
     for r in results:
         url = r.get("href", "")
-        if not any(skip in url for skip in SKIP_DOMAINS):
+        if _is_usable_url(url):
             return url
 
     return None
+
+
+def _fold(text: str) -> str:
+    """Lowercase and strip accents so 'Święch' matches 'Swiech'."""
+    normalized = unicodedata.normalize("NFKD", text)
+    return "".join(c for c in normalized if not unicodedata.combining(c)).lower()
+
+
+def name_on_page(pi_name: str, text: str) -> bool:
+    """True if the PI's surname (last name token longer than an initial) appears in text as a word."""
+    tokens = [t for t in re.split(r"[\s.,]+", _fold(pi_name)) if len(t) > 1]
+    if not tokens:
+        return True  # nothing to check against
+    surname = tokens[-1]
+    return re.search(rf"\b{re.escape(surname)}\b", _fold(text)) is not None
+
+
+def _is_usable_url(url: str) -> bool:
+    """Reject skip-listed domains, bare site roots (e.g. https://www.mit.edu/) and login pages."""
+    url_lower = url.lower()
+    if not url_lower or any(skip in url_lower for skip in SKIP_DOMAINS):
+        return False
+    if any(marker in url_lower for marker in LOGIN_MARKERS):
+        return False
+    return urlparse(url_lower).path not in ("", "/")
 
 
 def find_pi_urls_batch(
@@ -82,8 +121,7 @@ def _is_good_faculty_url(url: str) -> bool:
     """Check if a URL looks like a faculty/lab page."""
     url_lower = url.lower()
 
-    # Skip known non-useful domains
-    if any(skip in url_lower for skip in SKIP_DOMAINS):
+    if not _is_usable_url(url):
         return False
 
     # Prefer .edu and known academic domains

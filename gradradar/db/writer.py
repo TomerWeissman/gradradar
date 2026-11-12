@@ -242,6 +242,10 @@ def queue_update(
 # --- Internal helpers ---
 
 
+# Columns that reference other tables; DuckDB rewrites rows when these change.
+FK_COLUMNS = {"institution_id", "department_id", "advisor_id"}
+
+
 def _update_record(con: duckdb.DuckDBPyConnection, table: str, record_id, record: dict):
     """Update non-null fields of an existing record by id."""
     # Only update fields that are provided and not 'id'
@@ -250,7 +254,17 @@ def _update_record(con: duckdb.DuckDBPyConnection, table: str, record_id, record
         return
     set_clause = ", ".join([f'"{k}" = ?' for k in updates])
     values = list(updates.values()) + [str(record_id)]
-    con.execute(f'UPDATE "{table}" SET {set_clause} WHERE id = ?', values)
+    try:
+        con.execute(f'UPDATE "{table}" SET {set_clause} WHERE id = ?', values)
+    except duckdb.ConstraintException:
+        # DuckDB rewrites a row as delete+insert when a foreign-key column changes, which
+        # fails if other tables reference that row. Retry without the FK columns so the
+        # remaining fields (citations, h_index, ...) still update; the links stay as they were.
+        safe = {k: v for k, v in updates.items() if k not in FK_COLUMNS}
+        if not safe or safe == updates:
+            raise
+        set_clause = ", ".join([f'"{k}" = ?' for k in safe])
+        con.execute(f'UPDATE "{table}" SET {set_clause} WHERE id = ?', list(safe.values()) + [str(record_id)])
 
 
 def _log_possible_duplicate(

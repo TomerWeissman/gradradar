@@ -12,6 +12,15 @@ from urllib.parse import urlparse
 
 # Longer patterns matched against both URL and title text
 DEPT_PATTERNS = [
+    # Finance / OR departments first: their names contain generic words
+    # ("operations research", "engineering") that later patterns would claim.
+    (r"\boperations research and financial engineering\b", "Operations Research & Financial Engineering"),
+    (r"\bindustrial engineering and operations research\b", "Industrial Engineering & Operations Research"),
+    (r"\boperations research and information engineering\b", "Operations Research & Information Engineering"),
+    (r"\bindustrial and systems engineering\b", "Industrial & Systems Engineering"),
+    (r"\bfinancial engineering\b", "Financial Engineering"),
+    (r"\bfinancial mathematics\b|\bmathematical finance\b", "Financial Mathematics"),
+    (r"\bquantitative finance\b", "Quantitative Finance"),
     (r"\bcomputer science and engineering\b", "Computer Science & Engineering"),
     (r"\bcomputer science & engineering\b", "Computer Science & Engineering"),
     (r"\bcomputer science\b", "Computer Science"),
@@ -46,6 +55,7 @@ DEPT_PATTERNS = [
     (r"\beducation\b", "Education"),
     (r"\bmedicine\b", "Medicine"),
     (r"\bpathology\b", "Pathology"),
+    (r"\bfinance\b", "Finance"),
     (r"\boperations research\b", "Operations Research"),
     (r"\bmanagement science\b", "Management Science"),
     (r"\bsociology\b", "Sociology"),
@@ -68,6 +78,10 @@ DEPT_PATTERNS = [
 
 # Short patterns matched against URL only (subdomains + path segments)
 URL_PATTERNS = [
+    (r"(?:^|[/.])orfe(?:[./]|$)", "Operations Research & Financial Engineering"),
+    (r"(?:^|[/.])ieor(?:[./]|$)", "Industrial Engineering & Operations Research"),
+    (r"(?:^|[/.])orie(?:[./]|$)", "Operations Research & Information Engineering"),
+    (r"(?:^|[/.])isye(?:[./]|$)", "Industrial & Systems Engineering"),
     (r"(?:^|[/.])cs(?:[./]|$)", "Computer Science"),
     (r"(?:^|[/.])cse(?:[./]|$)", "Computer Science & Engineering"),
     (r"(?:^|[/.])eecs(?:[./]|$)", "Electrical Engineering & Computer Science"),
