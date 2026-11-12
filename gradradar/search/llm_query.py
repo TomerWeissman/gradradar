@@ -54,6 +54,11 @@ class QueryPlan(BaseModel):
         default=None,
         description="Fuzzy match on institution name (e.g. 'MIT', 'Stanford').",
     )
+    field: Literal["finance"] | None = Field(
+        default=None,
+        description="Restrict to PIs tagged with a research field. 'finance' = financial "
+        "engineering, quantitative/mathematical finance, financial econometrics.",
+    )
     order_by: str = Field(
         default="total_citations DESC",
         description="Sort order. One of: total_citations DESC, h_index DESC, "
@@ -93,6 +98,8 @@ Guidelines:
 - If the user asks about someone "taking students" or "looking for students", \
   set is_taking_students to "yes".
 - If no region is mentioned, leave it null (search all regions).
+- Set field to 'finance' only when the user (query or profile) is specifically looking for \
+  financial engineering, quantitative finance, or mathematical finance advisors.
 - Default sort is total_citations DESC unless the user implies a preference \
   (e.g. "rising stars" → citation_velocity DESC, "prolific" → paper_count DESC).
 - Set web_search_needed=true only if the query names a specific PI not likely \
@@ -139,12 +146,15 @@ def apply_cli_overrides(
     search_type: str | None = None,
     region: str | None = None,
     top: int | None = None,
+    field: str | None = None,
 ) -> QueryPlan:
     """Apply explicit CLI flags on top of the LLM-generated plan."""
     if search_type:
         plan.search_type = search_type
     if region:
         plan.region = region
+    if field:
+        plan.field = field
     if top:
         plan.limit = top
     return plan

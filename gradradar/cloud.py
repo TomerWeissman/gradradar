@@ -70,9 +70,37 @@ PI_SEARCH_COLUMNS = [
 ]
 
 
-def cloud_search_pis(query: str, limit: int = 100) -> list[dict]:
+def _filter_params(filters: dict) -> tuple[list[tuple[str, str]], bool]:
+    """PostgREST query params for the same filters sql_filter_pis applies locally.
+
+    Returns (params, needs_inner_join): institution filters need `institutions!inner`
+    so PIs whose institution doesn't match are dropped rather than returned with null.
+    """
+    params: list[tuple[str, str]] = []
+    needs_inner = False
+    if filters.get("region"):
+        params.append(("institutions.region", f"eq.{filters['region']}"))
+        needs_inner = True
+    if filters.get("institution_name"):
+        params.append(("institutions.name", f"ilike.*{filters['institution_name']}*"))
+        needs_inner = True
+    for field in ("is_taking_students", "theory_category", "career_stage"):
+        if filters.get(field):
+            params.append((field, f"eq.{filters[field]}"))
+    if filters.get("field"):
+        params.append(("fields", f"cs.{{{filters['field']}}}"))  # array contains
+    if filters.get("min_h_index") is not None:
+        params.append(("h_index", f"gte.{filters['min_h_index']}"))
+    if filters.get("max_h_index") is not None:
+        params.append(("h_index", f"lte.{filters['max_h_index']}"))
+    return params, needs_inner
+
+
+def cloud_search_pis(query: str, limit: int = 100, filters: dict | None = None) -> list[dict]:
     """Full-text search against the cloud `pis` table via PostgREST `plfts`.
 
+    `filters` takes the QueryPlan filter fields (region, is_taking_students,
+    theory_category, min/max_h_index, career_stage, institution_name, field).
     Returns the same dict shape as gradradar.search.fts_search.fts_search_pis
     so downstream stages (reranker, narrator) are drop-in compatible.
     """
@@ -80,13 +108,16 @@ def cloud_search_pis(query: str, limit: int = 100) -> list[dict]:
         return []
 
     base = get_supabase_url().rstrip("/")
+    filter_params, needs_inner = _filter_params(filters or {})
+    embed = "institutions!inner(name,region)" if needs_inner else "institutions(name)"
     # PostgREST embedded select: pulls institution name in a single round trip.
-    params = {
-        "select": ",".join(PI_SEARCH_COLUMNS) + ",institutions(name)",
-        "search_vector": f"plfts(english).{query}",
-        "order": "h_index.desc.nullslast",
-        "limit": str(limit),
-    }
+    params = [
+        ("select", ",".join(PI_SEARCH_COLUMNS) + "," + embed),
+        ("search_vector", f"plfts(english).{query}"),
+        ("order", "h_index.desc.nullslast"),
+        ("limit", str(limit)),
+        *filter_params,
+    ]
     with httpx.Client(timeout=15.0) as client:
         r = client.get(f"{base}/rest/v1/pis", headers=_rest_headers(), params=params)
         r.raise_for_status()

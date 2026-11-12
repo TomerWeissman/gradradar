@@ -49,3 +49,13 @@ def test_url_filter_rejects_roots_logins_and_ratings():
     assert not _is_usable_url("https://shibidp.cit.cornell.edu/idp/profile/SAML2/Redirect/SSO")
     assert not _is_usable_url("https://www.ratemyprofessors.com/professor/123")
     assert _is_usable_url("https://people.orie.cornell.edu/dag369/")
+
+
+def test_cloud_filter_params():
+    from gradradar.cloud import _filter_params
+    params, inner = _filter_params({"region": "US", "field": "finance", "min_h_index": 10, "career_stage": None})
+    assert inner
+    assert ("institutions.region", "eq.US") in params
+    assert ("fields", "cs.{finance}") in params
+    assert ("h_index", "gte.10") in params
+    assert _filter_params({}) == ([], False)

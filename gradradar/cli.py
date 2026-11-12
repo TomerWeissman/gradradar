@@ -302,6 +302,8 @@ def profile_path():
 @click.argument("query")
 @click.option("--type", "search_type", default=None, help="phd, masters, or both")
 @click.option("--region", default=None, help="US, UK, or Europe")
+@click.option("--field", default=None, type=click.Choice(["finance"]),
+              help="Only PIs tagged with this research field (hosted DB only).")
 @click.option("--top", default=10, help="Number of results to return")
 @click.option("--mode", default="hybrid", help="sql, fts, or hybrid")
 @click.option("--no-profile", is_flag=True, help="Ignore user profile")
@@ -315,7 +317,7 @@ def profile_path():
 @click.option("--no-rerank", is_flag=True, help="Skip LLM re-ranking of results")
 @click.option("--narrate", is_flag=True, help="Generate detailed match narratives for top results")
 @click.option("--local", "use_local", is_flag=True, help="Use the local DuckDB instead of the hosted cloud backend")
-def search(query, search_type, region, top, mode, no_profile, as_json, web, no_web, explain, explain_only, clarify, no_llm, no_rerank, narrate, use_local):
+def search(query, search_type, region, field, top, mode, no_profile, as_json, web, no_web, explain, explain_only, clarify, no_llm, no_rerank, narrate, use_local):
     """Search for PhD labs or Masters programs."""
     import duckdb
     from gradradar.profile import load_profile
@@ -340,6 +342,7 @@ def search(query, search_type, region, top, mode, no_profile, as_json, web, no_w
         plan = QueryPlan(
             search_terms=query,
             region=region,
+            field=field,
             search_type=search_type or "phd",
             limit=top,
             reasoning="Direct search (--no-llm)",
@@ -349,7 +352,7 @@ def search(query, search_type, region, top, mode, no_profile, as_json, web, no_w
         try:
             with console.status("[bold green]Analyzing query..."):
                 plan = translate_query(query, profile=profile)
-                plan = apply_cli_overrides(plan, search_type=search_type, region=region, top=top)
+                plan = apply_cli_overrides(plan, search_type=search_type, region=region, top=top, field=field)
         except Exception as e:
             err_msg = str(e)
             if "credit balance" in err_msg or "api_key" in err_msg.lower():
@@ -357,6 +360,7 @@ def search(query, search_type, region, top, mode, no_profile, as_json, web, no_w
                 plan = QueryPlan(
                     search_terms=query,
                     region=region,
+                    field=field,
                     search_type=search_type or "phd",
                     limit=top,
                     reasoning="Fallback — LLM unavailable",
@@ -369,6 +373,9 @@ def search(query, search_type, region, top, mode, no_profile, as_json, web, no_w
         print_query_plan(plan.model_dump())
         if explain_only:
             return
+
+    if plan.field and not cloud:
+        console.print("[yellow]--field is only supported on the hosted DB; ignoring it with --local.[/yellow]")
 
     # Execute search (read-write when narrating so we can cache narrations)
     use_narrate = narrate and not no_llm

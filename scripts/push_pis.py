@@ -67,7 +67,7 @@ def load_temp(cur, table: str, cols: list[str], csv_text: str):
     )
 
 
-def push(pg, duck, openalex_ids: list[str]) -> dict:
+def push(pg, duck, openalex_ids: list[str], tag_field: str | None = None) -> dict:
     pis_csv = export_csv(
         duck, f"SELECT {', '.join(PI_COLS)} FROM pis WHERE list_contains(?, openalex_id)", [openalex_ids]
     )
@@ -107,6 +107,13 @@ def push(pg, duck, openalex_ids: list[str]) -> dict:
 
         cur.execute("SELECT count(*) FROM tmp_pis WHERE research_description IS NOT NULL")
         stats["pis_with_description"] = cur.fetchone()[0]
+
+        if tag_field:
+            cur.execute("""
+                UPDATE public.pis SET fields = array_append(fields, %s)
+                WHERE id IN (SELECT id FROM tmp_pis) AND NOT (%s = ANY(fields))
+            """, [tag_field, tag_field])
+            stats[f"pis_tagged_{tag_field}"] = cur.rowcount
     return stats
 
 
@@ -128,6 +135,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--openalex-ids", required=True, help="JSON list of OpenAlex author IDs to push")
     parser.add_argument("--apply", action="store_true", help="Commit (default is a dry run that rolls back)")
+    parser.add_argument("--tag-field", default=None, help="Also add this research-field tag (e.g. finance) to the pushed PIs")
     args = parser.parse_args()
 
     db_url = os.environ.get("SUPABASE_DB_URL")
@@ -141,7 +149,7 @@ def main() -> int:
     duck = duckdb.connect(str(get_db_path()), read_only=True)
     pg = psycopg2.connect(db_url)
     try:
-        stats = push(pg, duck, openalex_ids)
+        stats = push(pg, duck, openalex_ids, tag_field=args.tag_field)
         for k, v in stats.items():
             print(f"  {k}: {v:,}")
         if args.apply:

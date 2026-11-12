@@ -119,14 +119,24 @@ def _enrich_results(
 def _cloud_search_pis(plan: QueryPlan, use_rerank: bool, profile: str | None) -> list[dict]:
     """Cloud-backed PI search (Supabase PostgREST + plfts).
 
-    Skips local SQL filters and paper enrichment (papers aren't in the cloud DB
-    for v0). Still runs the LLM reranker against the returned candidates when
-    `use_rerank` is on.
+    Applies the plan's filters server-side; skips paper enrichment (papers aren't
+    in the cloud DB for v0). Still runs the LLM reranker against the returned
+    candidates when `use_rerank` is on.
     """
     from gradradar.cloud import cloud_search_pis
 
     fetch_limit = max(plan.limit * 3, 30)
-    results = cloud_search_pis(plan.search_terms, limit=fetch_limit)
+    filters = {
+        "region": plan.region,
+        "is_taking_students": plan.is_taking_students,
+        "theory_category": plan.theory_category,
+        "min_h_index": plan.min_h_index,
+        "max_h_index": plan.max_h_index,
+        "career_stage": plan.career_stage,
+        "institution_name": plan.institution_name,
+        "field": plan.field,
+    }
+    results = cloud_search_pis(plan.search_terms, limit=fetch_limit, filters=filters)
     if not results:
         return []
 
