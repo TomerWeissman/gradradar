@@ -67,6 +67,14 @@ PI_SEARCH_COLUMNS = [
     "is_taking_students",
     "career_stage",
     "research_description",
+    "short_bio",
+    "paper_count",
+    "department_name",
+    "email",
+    "personal_url",
+    "lab_url",
+    "lab_name",
+    "source_url",
 ]
 
 
@@ -138,6 +146,14 @@ def cloud_search_pis(query: str, limit: int = 100, filters: dict | None = None) 
             "is_taking_students": row.get("is_taking_students"),
             "career_stage": row.get("career_stage"),
             "research_description": row.get("research_description"),
+            "short_bio": row.get("short_bio"),
+            "paper_count": row.get("paper_count"),
+            "department_name": row.get("department_name"),
+            "email": row.get("email"),
+            # Fall back to the faculty page we scraped when there's no personal homepage.
+            "personal_url": row.get("personal_url") or row.get("source_url"),
+            "lab_url": row.get("lab_url"),
+            "lab_name": row.get("lab_name"),
         })
     return out
 

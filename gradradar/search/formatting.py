@@ -90,7 +90,7 @@ def _print_pi_card(rank: int, pi: dict):
 
     theory = pi.get("theory_category")
     if theory and theory != "unknown":
-        meta_parts.append(f"[cyan]{theory}[/cyan]")
+        meta_parts.append(theory)  # plain: the meta line is a rich Text, which doesn't parse markup
 
     meta = "  |  ".join(meta_parts)
 
