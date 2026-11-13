@@ -302,7 +302,7 @@ def profile_path():
 @click.argument("query")
 @click.option("--type", "search_type", default=None, help="phd, masters, or both")
 @click.option("--region", default=None, help="US, UK, or Europe")
-@click.option("--field", default=None, type=click.Choice(["finance"]),
+@click.option("--field", default=None, type=click.Choice(["finance", "optimization"]),
               help="Only PIs tagged with this research field (hosted DB only).")
 @click.option("--top", default=10, help="Number of results to return")
 @click.option("--mode", default="hybrid", help="sql, fts, or hybrid")

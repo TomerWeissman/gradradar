@@ -54,10 +54,12 @@ class QueryPlan(BaseModel):
         default=None,
         description="Fuzzy match on institution name (e.g. 'MIT', 'Stanford').",
     )
-    field: Literal["finance"] | None = Field(
+    field: Literal["finance", "optimization"] | None = Field(
         default=None,
         description="Restrict to PIs tagged with a research field. 'finance' = financial "
-        "engineering, quantitative/mathematical finance, financial econometrics.",
+        "engineering, quantitative/mathematical finance, financial econometrics. "
+        "'optimization' = operations research and optimization (continuous, stochastic, "
+        "robust, combinatorial; queueing, scheduling, supply chain).",
     )
     order_by: str = Field(
         default="total_citations DESC",
@@ -98,8 +100,10 @@ Guidelines:
 - If the user asks about someone "taking students" or "looking for students", \
   set is_taking_students to "yes".
 - If no region is mentioned, leave it null (search all regions).
-- Set field to 'finance' only when the user (query or profile) is specifically looking for \
-  financial engineering, quantitative finance, or mathematical finance advisors.
+- Set field only when the query itself is squarely about one tagged field: 'finance' for \
+  financial engineering / quantitative or mathematical finance, 'optimization' for operations \
+  research / mathematical optimization. A profile mentioning several fields is not enough; \
+  leave field null when unsure, since it hides everyone outside the tag.
 - Default sort is total_citations DESC unless the user implies a preference \
   (e.g. "rising stars" → citation_velocity DESC, "prolific" → paper_count DESC).
 - Set web_search_needed=true only if the query names a specific PI not likely \
